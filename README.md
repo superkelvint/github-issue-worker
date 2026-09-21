@@ -1,6 +1,6 @@
 # GitHub Coding Agent Skills
 
-This repository contains two independent Codex/ChatGPT skills for a GitHub issue-to-PR workflow.
+This repository contains three independent Codex/ChatGPT skills for a GitHub issue-to-PR workflow.
 
 ## $issue
 
@@ -26,6 +26,16 @@ $verify
 
 $verify never merges or approves PRs. Non-draft PRs are outside its queue.
 
+## $issue-followup
+
+Process one open issue labeled `needs-followup`, claim it by moving the issue to `followup-in-progress`, update the existing PR/branch with the requested correction or missing verification, then hand it back by marking the PR ready and moving the issue to `needs-cto-review`.
+
+~~~text
+$issue-followup
+~~~
+
+$issue-followup does not merge, approve, close, or create replacement PRs for ordinary follow-up work.
+
 ## Layout
 
 ~~~text
@@ -35,6 +45,9 @@ issue/
   scripts/claim_issue.py
   scripts/release_issue.py
 verify/
+  SKILL.md
+  agents/openai.yaml
+issue-followup/
   SKILL.md
   agents/openai.yaml
 ~~~
@@ -49,11 +62,12 @@ git clone https://github.com/superkelvint/github-issue-worker.git \
   ~/.codex/github-skill-repos/github-issue-worker
 ln -s ~/.codex/github-skill-repos/github-issue-worker/issue ~/.codex/skills/issue
 ln -s ~/.codex/github-skill-repos/github-issue-worker/verify ~/.codex/skills/verify
+ln -s ~/.codex/github-skill-repos/github-issue-worker/issue-followup ~/.codex/skills/issue-followup
 ~~~
 
 If you previously installed the old repository-root $issue skill, remove that old installation first to avoid duplicate discovery.
 
-Update both skills later with:
+Update all skills later with:
 
 ~~~bash
 cd ~/.codex/github-skill-repos/github-issue-worker
