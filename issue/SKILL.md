@@ -17,6 +17,7 @@ Require all of the following before changing code:
 - Treat the checkout from which the skill is invoked as a coordination checkout only. **Never switch that checkout onto the claimed issue branch.**
 - Every claimed issue MUST use its own dedicated Git worktree before any task-owned file is edited, test is run against task changes, commit is created, or push is made.
 - Read repository-root `AGENTS.md` and any more-specific `AGENTS.md` files governing files you touch.
+- Treat `AGENTS.md` as the authoritative environment/build/worktree recovery guide. If any setup, toolchain, linker, native SDK, cache, dependency, worktree, formatting, lint, or test-environment failure occurs, re-read the applicable `AGENTS.md` instructions before classifying the task as blocked.
 
 If a race-safe remote claim cannot be created, do not start implementation.
 
@@ -73,7 +74,7 @@ Do **not** create a ready PR and then add `needs-cto-review`; a crash between th
 
 If `needs-cto-review` does not exist, do not create an unlabeled ready PR as a workaround. Report the missing workflow label so the harness/operator can create it.
 
-If verification is blocked or failing, a draft PR may be preserved without `needs-cto-review`; it is not being handed to CTO yet.
+If verification is blocked or failing, continue remediation first. A draft PR may be preserved without `needs-cto-review` only after the **Environment and verification recovery** rules below have been exhausted; it is not being handed to CTO yet.
 
 ## Optional Issue Filter Argument
 
@@ -205,6 +206,22 @@ Stay inside the issue contract. Avoid opportunistic refactors, formatting churn,
 
 Preserve frozen/public contracts unless the issue explicitly changes them. Use canonical generators for generated artifacts.
 
+## Environment and verification recovery
+
+A failed required check is work to diagnose, not permission to stop.
+
+When a build, test, lint, formatter, linker, native SDK, dependency, cache, generated-artifact, or worktree/setup failure occurs:
+
+1. Re-read the repository-root `AGENTS.md` and every more-specific `AGENTS.md` that applies to the failing path.
+2. Follow the repository's documented environment/setup instructions exactly, including prescribed diagnostics, bootstrap commands, environment variables, symlinks, caches, SDK setup, or worktree preparation.
+3. Run repository-provided diagnostics named by `AGENTS.md` before diagnosing product code. For example, if `AGENTS.md` says to run `./dev doctor` for environment-related failures, run it and act on each failed prerequisite.
+4. Repair locally actionable environment/setup problems and retry the original required check. Creating required worktree-local symlinks, setting documented overrides, populating documented caches, or running documented setup commands is part of the task, not scope expansion.
+5. Do **not** use labels such as `pre-existing`, `environmental`, `native SDK blocker`, `linker blocker`, or `workspace formatting blocker` as a stopping reason when `AGENTS.md` provides a recovery path or the failure is otherwise locally actionable.
+6. Do **not** hand off a draft PR merely because required verification failed before the documented recovery steps were attempted.
+7. Classify the task as genuinely blocked only after the applicable `AGENTS.md` recovery path has been exhausted and the remaining cause is external/non-actionable in the current runtime, such as missing authorization, an unavailable required external service/artifact, or a permission boundary the worker cannot change. Record the exact commands, diagnostics, evidence, and next step.
+
+If the repository instructions themselves are wrong or insufficient and repairing them is necessary to make the issue verifiable, make the smallest safe repository change or open/update a concrete issue as appropriate rather than silently treating the environment as somebody else's problem.
+
 ## Verify
 
 Run verification in increasing scope:
@@ -278,7 +295,7 @@ Mandatory cleanup invariant: after a successful claim, the worker MUST NOT termi
 - Dirty coordination checkout: preserve it; use the dedicated worktree.
 - Dedicated worktree cannot be created: release the claim and stop.
 - Missing GitHub write permission: stop before coding.
-- Required verification cannot run: record the exact blocker; never report success.
+- Required verification cannot run: first execute the **Environment and verification recovery** workflow. Only after documented recovery is exhausted may you record a genuine external blocker; never report success.
 - Scope expands beyond one reviewable issue: stop and propose splitting.
 - Issue already satisfied on default: record evidence, release claim, create no duplicate PR.
 - Any terminal failure after claim: preserve a PR or release the claim.
