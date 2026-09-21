@@ -7,6 +7,7 @@ The important concurrency rule is deliberately simple: `codex/issue-N` is the ca
 ## Behavior
 
 - inspects open GitHub issues and selects one atomic, reviewable task;
+- optionally restricts selection to issues matching a keyword or phrase;
 - reads repository `AGENTS.md` instructions before modifying code;
 - claims exactly one issue before coding;
 - writes a failing regression test first for reported bugs;
@@ -15,6 +16,23 @@ The important concurrency rule is deliberately simple: `codex/issue-N` is the ca
 - pushes the claimed branch and opens a PR containing `Fixes #N`;
 - never auto-merges or independently closes the issue;
 - safely releases abandoned claims with an actionable explanation.
+
+## Usage
+
+Consider all open issues:
+
+```text
+$github-issue-worker
+```
+
+Restrict selection to matching issues:
+
+```text
+$github-issue-worker hnsw
+$github-issue-worker "schema fidelity"
+```
+
+The argument is a hard filter. If nothing matching it is actionable, the worker stops instead of selecting an unrelated issue.
 
 ## Requirements
 
