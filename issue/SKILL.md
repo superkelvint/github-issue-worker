@@ -1,6 +1,6 @@
 ---
 name: issue
-description: Autonomously select, claim, implement, verify, and submit one GitHub issue as a pull request, with an optional keyword argument that restricts selection to matching open issues. Use when asked to pick work from a repository's open issues, optionally filtered by a term such as `$issue hnsw`, claim an issue before coding, fix a named or selected issue, or run an issue-to-PR coding-agent workflow. Enforces race-safe claiming, repository AGENTS.md instructions, regression-test-first fixes, focused verification, PR handoff without auto-merging, mandatory claim cleanup, and awareness of the reserved `needs-followup`, `followup-in-progress`, and `needs-cto-review` lifecycle.
+description: Autonomously select, claim, implement, verify, and submit one GitHub issue as a pull request, with an optional keyword argument that restricts selection to matching open issues. Use when asked to pick work from a repository's open issues, optionally filtered by a term such as `$issue hnsw`, claim an issue before coding, fix a named or selected issue, or run an issue-to-PR coding-agent workflow. Enforces race-safe claiming, mandatory per-issue Git worktree isolation, repository AGENTS.md instructions, regression-test-first fixes, focused verification, PR handoff without auto-merging, mandatory claim cleanup, and awareness of the reserved `needs-followup`, `followup-in-progress`, and `needs-cto-review` lifecycle.
 ---
 
 # GitHub Issue Worker
@@ -14,6 +14,8 @@ Require all of the following before changing code:
 - Work inside a Git checkout of the target repository.
 - Require `git` and authenticated `gh` CLI access with permission to read issues and create branches/PRs.
 - Keep the working tree clean unless existing user changes are explicitly part of the task. Never discard unrelated changes.
+- Treat the checkout from which the skill is invoked as a coordination checkout only. **Never switch that checkout onto the claimed issue branch.**
+- Every claimed issue MUST use its own dedicated Git worktree before any task-owned file is edited, test is run against task changes, commit is created, or push is made.
 - Read repository-root `AGENTS.md` and any more-specific `AGENTS.md` files governing files you touch.
 
 If a race-safe remote claim cannot be created, do not start implementation.
@@ -25,7 +27,7 @@ If a race-safe remote claim cannot be created, do not start implementation.
 3. Read the complete issue and comments before claiming it.
 4. Claim it atomically by creating the canonical remote work branch.
 5. Re-read the issue after claiming and verify no conflicting work or state change appeared.
-6. Create/check out the local work branch from the exact claimed remote branch.
+6. Create or locate a **dedicated worktree** attached to the exact claimed remote branch. Enter that worktree before any implementation activity. Never `git switch` or `git checkout` the shared coordination checkout onto the issue branch.
 7. Before changing production code, determine whether the current default branch already satisfies the issue's acceptance criteria. If it does, follow **Already Resolved on the Default Branch** below and stop without creating a duplicate PR.
 8. Reproduce the bug or establish an acceptance test before changing production code.
 9. Implement the smallest change that satisfies the issue.
@@ -155,18 +157,59 @@ After branch creation, assignment, an `in-progress` label when already available
 
 Immediately after a successful claim, re-read the issue and comments. If it became closed, blocked, superseded, or otherwise invalid, release the claim before doing implementation work.
 
-## Check Out the Exact Claimed Branch
+## Mandatory Worktree for the Exact Claimed Branch
 
-After claiming:
+A successful remote claim does **not** authorize switching the current/shared checkout onto the issue branch. The current checkout remains a coordination checkout.
+
+Immediately after claiming, create or locate the dedicated issue worktree with the bundled helper:
 
 ```bash
-git fetch origin codex/issue-<number>
-git switch --track -c codex/issue-<number> origin/codex/issue-<number>
+WORKTREE="$(python <skill-dir>/scripts/create_worktree.py --issue <number> --print-path)"
+cd "$WORKTREE"
 ```
 
-If the local branch already exists, verify it tracks the same remote ref and contains no unrelated work before proceeding.
+The helper attaches the exact canonical branch:
 
-Do not create an alternate implementation branch unless repository policy explicitly requires one. The canonical remote branch must remain the ownership signal for the issue.
+```text
+codex/issue-<number>
+```
+
+to a dedicated worktree, defaulting to:
+
+```text
+/tmp/<repository-name>-issue-<number>
+```
+
+It verifies that the worktree is on the exact claimed branch and at the current remote claim head. If the branch is already attached to another non-shared worktree at the expected head, reuse that worktree. If the branch is checked out in the current/shared checkout, the helper fails rather than allowing the agent to work there.
+
+After the worktree is established, **all task-owned repository operations MUST run inside it**, including:
+
+- reading/modifying task files after claim;
+- regression reproduction involving task changes;
+- generation;
+- formatting/lint/tests/verifiers;
+- `git status`, `git diff`, staging, commit, and push;
+- PR-head verification.
+
+Hard prohibitions after claim:
+
+- do not run `git switch codex/issue-<number>` in the shared checkout;
+- do not run `git checkout codex/issue-<number>` in the shared checkout;
+- do not reuse another issue's worktree;
+- do not create an alternate implementation branch just to avoid a worktree conflict;
+- do not delete or reset an existing worktree to make the task fit.
+
+Repository helpers such as `./dev worktree create` may be used only if they can attach the **exact already-claimed canonical branch**. If a repository helper creates a new branch from HEAD instead, do not use it for this workflow; use `scripts/create_worktree.py`.
+
+Before the first edit, verify from inside the worktree:
+
+```bash
+git rev-parse --show-toplevel
+git branch --show-current
+git status --short
+```
+
+The branch must be exactly `codex/issue-<number>`. If a dedicated worktree cannot be created safely, do not implement in the shared checkout. Release the claim and report the blocker.
 
 ## Already Resolved on the Default Branch
 
@@ -332,7 +375,8 @@ When release succeeds, remove only this worker's assignment/claim metadata. Neve
 ## Failure Rules
 
 - Claim collision: select another issue; never continue on the collided issue.
-- Dirty worktree with unrelated changes: preserve them; use a clean worktree/checkout if available.
+- Dirty coordination checkout with unrelated changes: preserve them; this does not justify branch-switching it. Create the dedicated issue worktree and work there.
+- Dedicated issue worktree cannot be created or verified: do not implement in the shared checkout; release the claim and report the exact blocker.
 - Missing GitHub write permission: stop before coding because safe claiming is impossible.
 - Test cannot fail before the fix: investigate before editing production code.
 - Required verification cannot run: document the exact environmental blocker; never report success.
@@ -343,4 +387,5 @@ When release succeeds, remove only this worker's assignment/claim metadata. Neve
 ## Bundled Scripts
 
 - `scripts/claim_issue.py` — atomically claim an issue by creating `codex/issue-N`, then add best-effort issue metadata.
+- `scripts/create_worktree.py` — create or locate the mandatory dedicated worktree for the exact claimed branch and refuse unsafe shared-checkout use.
 - `scripts/release_issue.py` — safely release an abandoned claim while protecting branches with commits or PRs.

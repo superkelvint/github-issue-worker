@@ -5,6 +5,7 @@ The $issue skill runs one GitHub issue from selection through pull request.
 It supports:
 - optional hard filtering such as $issue hnsw or $issue "schema fidelity";
 - atomic claiming through the canonical codex/issue-N remote branch;
+- mandatory dedicated Git worktree isolation for every claimed issue;
 - regression-test-first bug fixes;
 - focused implementation and verification;
 - pull-request handoff without auto-merge;
