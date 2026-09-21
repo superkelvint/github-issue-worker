@@ -16,7 +16,7 @@ Before mutating issue or PR state:
 - Work inside a Git checkout of the target repository.
 - Require `git` for local repository work plus GitHub write access through the runtime's supported remote interface. In ChatGPT, native GitHub access satisfies the remote requirement; do not require `gh`.
 - Read repository-root `AGENTS.md` and any more-specific `AGENTS.md` files governing files you may touch.
-- Treat `AGENTS.md` as the authoritative environment/build/worktree recovery guide. Environment, linker, SDK, dependency, cache, or worktree failures require re-reading and executing the applicable `AGENTS.md` recovery instructions before the follow-up may be called blocked.
+- Treat repository-root `AGENTS.md` as the entry point for authoritative repository instructions. Follow any build/setup/environment documents it delegates to (for example `BUILDING.md`) plus any more-specific `AGENTS.md` files. Environment, linker, SDK, dependency, cache, or worktree failures require re-reading and executing those instructions before the follow-up may be called blocked.
 - Preserve unrelated local changes. Prefer an isolated worktree for follow-up work.
 - Identify exactly one existing open PR associated with the follow-up issue before claiming it.
 
@@ -132,11 +132,11 @@ A verification failure caused by repository setup is follow-up work, not a hando
 
 For any setup, toolchain, linker, native SDK, dependency, cache, generated-artifact, worktree, formatter, lint, or test-environment failure:
 
-1. Re-read the applicable repository-root and subtree `AGENTS.md` files.
-2. Run the diagnostics and setup commands they prescribe before diagnosing product code.
+1. Re-read the applicable repository-root and subtree `AGENTS.md` files and the authoritative build/setup/environment documents they point to, such as `BUILDING.md`.
+2. Run the diagnostics and setup commands those instructions prescribe before diagnosing product code.
 3. Apply locally actionable environment fixes they describe, including required symlinks, documented environment overrides, cache/bootstrap commands, and worktree preparation.
 4. Retry the originally requested verification after remediation.
-5. Never stop at `pre-existing` or `environmental` when `AGENTS.md` provides a recovery path or the problem is locally actionable.
+5. Never stop at `pre-existing` or `environmental` when the repository's authoritative instructions provide a recovery path or the problem is locally actionable.
 6. Keep the follow-up blocked only when the documented recovery path is exhausted and the remaining cause is genuinely external/non-actionable; post exact commands, evidence, and the required next step.
 
 ## Verification
