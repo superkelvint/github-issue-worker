@@ -17,7 +17,7 @@ Require all of the following before changing code:
 - Treat the checkout from which the skill is invoked as a coordination checkout only. **Never switch that checkout onto the claimed issue branch.**
 - Every claimed issue MUST use its own dedicated Git worktree before any task-owned file is edited, test is run against task changes, commit is created, or push is made.
 - Read repository-root `AGENTS.md` and any more-specific `AGENTS.md` files governing files you touch.
-- Treat `AGENTS.md` as the authoritative environment/build/worktree recovery guide. If any setup, toolchain, linker, native SDK, cache, dependency, worktree, formatting, lint, or test-environment failure occurs, re-read the applicable `AGENTS.md` instructions before classifying the task as blocked.
+- Treat repository-root `AGENTS.md` as the entry point for authoritative repository instructions. Follow any build/setup/environment documents it delegates to (for example `BUILDING.md`) and any more-specific `AGENTS.md` files governing the failing path. If any setup, toolchain, linker, native SDK, cache, dependency, worktree, formatting, lint, or test-environment failure occurs, re-read those authoritative instructions before classifying the task as blocked.
 
 If a race-safe remote claim cannot be created, do not start implementation.
 
@@ -212,13 +212,13 @@ A failed required check is work to diagnose, not permission to stop.
 
 When a build, test, lint, formatter, linker, native SDK, dependency, cache, generated-artifact, or worktree/setup failure occurs:
 
-1. Re-read the repository-root `AGENTS.md` and every more-specific `AGENTS.md` that applies to the failing path.
-2. Follow the repository's documented environment/setup instructions exactly, including prescribed diagnostics, bootstrap commands, environment variables, symlinks, caches, SDK setup, or worktree preparation.
-3. Run repository-provided diagnostics named by `AGENTS.md` before diagnosing product code. For example, if `AGENTS.md` says to run `./dev doctor` for environment-related failures, run it and act on each failed prerequisite.
+1. Re-read the repository-root `AGENTS.md`, every more-specific `AGENTS.md` that applies to the failing path, and the authoritative build/setup/environment documents those files point to (for example `BUILDING.md`).
+2. Follow those documented environment/setup instructions exactly, including prescribed diagnostics, bootstrap commands, environment variables, symlinks, caches, SDK setup, or worktree preparation.
+3. Run repository-provided diagnostics named by those authoritative instructions before diagnosing product code. For example, if the repository build guide says to run `./dev doctor` for environment-related failures, run it and act on each failed prerequisite.
 4. Repair locally actionable environment/setup problems and retry the original required check. Creating required worktree-local symlinks, setting documented overrides, populating documented caches, or running documented setup commands is part of the task, not scope expansion.
-5. Do **not** use labels such as `pre-existing`, `environmental`, `native SDK blocker`, `linker blocker`, or `workspace formatting blocker` as a stopping reason when `AGENTS.md` provides a recovery path or the failure is otherwise locally actionable.
+5. Do **not** use labels such as `pre-existing`, `environmental`, `native SDK blocker`, `linker blocker`, or `workspace formatting blocker` as a stopping reason when the repository's authoritative instructions provide a recovery path or the failure is otherwise locally actionable.
 6. Do **not** hand off a draft PR merely because required verification failed before the documented recovery steps were attempted.
-7. Classify the task as genuinely blocked only after the applicable `AGENTS.md` recovery path has been exhausted and the remaining cause is external/non-actionable in the current runtime, such as missing authorization, an unavailable required external service/artifact, or a permission boundary the worker cannot change. Record the exact commands, diagnostics, evidence, and next step.
+7. Classify the task as genuinely blocked only after the applicable repository-documented recovery path has been exhausted and the remaining cause is external/non-actionable in the current runtime, such as missing authorization, an unavailable required external service/artifact, or a permission boundary the worker cannot change. Record the exact commands, diagnostics, evidence, and next step.
 
 If the repository instructions themselves are wrong or insufficient and repairing them is necessary to make the issue verifiable, make the smallest safe repository change or open/update a concrete issue as appropriate rather than silently treating the environment as somebody else's problem.
 
