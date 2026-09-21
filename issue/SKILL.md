@@ -26,13 +26,15 @@ If a race-safe remote claim cannot be created, do not start implementation.
 4. Claim it atomically by creating the canonical remote work branch.
 5. Re-read the issue after claiming and verify no conflicting work or state change appeared.
 6. Create/check out the local work branch from the exact claimed remote branch.
-7. Reproduce the bug or establish an acceptance test before changing production code.
-8. Implement the smallest change that satisfies the issue.
-9. Run focused tests first, then the repository's required verification gates.
-10. Review the diff for scope, generated files, accidental formatting churn, secrets, and unrelated edits.
-11. Commit and push the work branch.
-12. Open a PR referencing the issue with `Fixes #<number>` and report verification evidence.
-13. Before terminating after a successful claim, enforce the claim-cleanup invariant: either an implementation PR exists for the claimed branch, or release the claim. Never leave a claimed issue stranded.\n14. Stop. Never merge the PR or manually close the issue unless the user explicitly asks.
+7. Before changing production code, determine whether the current default branch already satisfies the issue's acceptance criteria. If it does, follow **Already Resolved on the Default Branch** below and stop without creating a duplicate PR.
+8. Reproduce the bug or establish an acceptance test before changing production code.
+9. Implement the smallest change that satisfies the issue.
+10. Run focused tests first, then the repository's required verification gates.
+11. Review the diff for scope, generated files, accidental formatting churn, secrets, and unrelated edits.
+12. Commit and push the work branch.
+13. Open a PR referencing the issue with `Fixes #<number>` and report verification evidence.
+14. Before terminating after a successful claim, enforce the claim-cleanup invariant: either an implementation PR exists for the claimed branch, or release the claim. Never leave a claimed issue stranded.
+15. Stop. Never merge the PR or manually close the issue unless the user explicitly asks.
 
 ## Optional Issue Filter Argument
 
@@ -118,6 +120,60 @@ If the local branch already exists, verify it tracks the same remote ref and con
 
 Do not create an alternate implementation branch unless repository policy explicitly requires one. The canonical remote branch must remain the ownership signal for the issue.
 
+## Already Resolved on the Default Branch
+
+An issue may have become stale because another commit already implemented its requested outcome. Treat this as a distinct resolution path, not as a failed implementation attempt.
+
+Use this path only when the **current default branch itself** satisfies the issue's acceptance criteria and no task-owned code change is required.
+
+Required behavior:
+
+1. Fetch/refresh the default branch and identify the exact existing commit or commits that appear to resolve the issue.
+2. Verify the issue against the current default branch using the issue's stated acceptance criteria and verification commands where practical. Do not rely only on code inspection or commit messages.
+3. Distinguish unrelated failures from the issue being evaluated. A separate pre-existing defect does not keep this issue open when the issue explicitly excludes that defect from scope.
+4. Do not modify production code merely to create a branch diff.
+5. Do not create an empty, no-op, or duplicate pull request.
+6. Leave an issue comment recording:
+   - the existing resolving commit(s);
+   - the acceptance criteria checked;
+   - the exact verification commands and outcomes;
+   - any separate remaining defect or follow-up issue;
+   - that no duplicate PR was created.
+7. Release the claim safely because this worker has no implementation to submit.
+8. Stop. The worker must not close the issue or declare its own evidence VERIFIED.
+
+The reviewer/CTO owns final disposition. If independent review confirms that the default branch already satisfies the issue, the reviewer/CTO should:
+
+- apply the permanent label `resolution:already-fixed`;
+- close the issue as completed;
+- keep any distinct remaining defect in a separate atomic issue.
+
+The label is part of the durable resolution record and supports filtering with:
+
+```text
+is:issue is:closed label:"resolution:already-fixed"
+```
+
+Do **not** apply `resolution:already-fixed` merely because this worker believes the issue is already satisfied. Applying that label is part of reviewer/CTO verification, just like closing the issue.
+
+A good handoff comment is concise and explicit:
+
+```text
+Already resolved on current <default-branch> by <commit>.
+
+Evidence:
+- <acceptance criterion / verification result>
+- <acceptance criterion / verification result>
+
+Separate remaining work:
+- <none, or issue/reference for an out-of-scope defect>
+
+No duplicate PR was created. Claim released.
+
+Reviewer/CTO action: independently verify this evidence; if confirmed, apply
+resolution:already-fixed and close the issue as completed.
+```
+
 ## Test Before Fixing
 
 For a reported bug:
@@ -185,6 +241,8 @@ Do not merge the PR. Do not mark the issue complete independently. Let merge/mai
 
 ## Invalid, Blocked, or Mis-Specified Issues
 
+Do not use this section for an issue that is already correctly implemented on the default branch; use **Already Resolved on the Default Branch** instead.
+
 If investigation shows the issue should not be implemented as written, leave a concise issue comment that states:
 
 1. what is wrong or blocking the task;
@@ -227,8 +285,10 @@ When release succeeds, remove only this worker's assignment/claim metadata. Neve
 - Test cannot fail before the fix: investigate before editing production code.
 - Required verification cannot run: document the exact environmental blocker; never report success.
 - Scope expands beyond one reviewable issue: stop and propose splitting follow-up work rather than silently broadening the PR.
+- Issue is already satisfied on the current default branch: record evidence, release the claim, create no duplicate PR, and leave reviewer/CTO closure plus the `resolution:already-fixed` label as the final disposition.
+- Any terminal failure after a successful claim: open/preserve an implementation PR or release the claim before exiting. Never strand a claim.
 
-- Any terminal failure after a successful claim: open/preserve an implementation PR or release the claim before exiting. Never strand a claim.\n\n## Bundled Scripts
+## Bundled Scripts
 
 - `scripts/claim_issue.py` — atomically claim an issue by creating `codex/issue-N`, then add best-effort issue metadata.
 - `scripts/release_issue.py` — safely release an abandoned claim while protecting branches with commits or PRs.
