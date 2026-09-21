@@ -1,6 +1,6 @@
 ---
 name: issue-followup
-description: Process GitHub issues labeled `needs-followup` by claiming one follow-up, updating the existing pull request/branch with the requested correction or missing verification, and handing it back for CTO review. Use when asked to run `$issue-followup`, handle follow-up issues, address review-requested changes on an existing PR, or work the `needs-followup` queue. Requires an unambiguous existing open PR, moves issue labels from `needs-followup` to `followup-in-progress` and then `needs-cto-review`, comments claim and verification evidence, and marks the existing PR ready for review without merging it.
+description: Process GitHub issues labeled `needs-followup` by claiming one follow-up, updating the existing pull request/branch with the requested correction or missing verification, and handing it back for CTO review. Use when asked to run `$issue-followup`, handle follow-up issues, address review-requested changes on an existing PR, or work the `needs-followup` queue. Requires an unambiguous existing open PR, moves the issue from `needs-followup` to `followup-in-progress`, then labels the pull request `needs-cto-review`, comments claim and verification evidence, and marks the existing PR ready for review without merging it.
 ---
 
 # GitHub Issue Follow-up Worker
@@ -36,7 +36,7 @@ If the issue does not identify one unambiguous existing open PR, do not claim it
 11. Post a PR comment describing what changed and the exact verification commands/results.
 12. Mark the PR **Ready for review**.
 13. Remove `followup-in-progress` from the issue.
-14. Add `needs-cto-review` to the issue.
+14. Add `needs-cto-review` to the **pull request**. Do not add it to the issue.
 15. Stop. Never merge, approve, or close the PR or issue.
 
 ## Select a Follow-up Issue
@@ -62,7 +62,7 @@ Prefer issues where:
 - the requested correction stays within the PR's intended scope;
 - verification can be run in the current environment.
 
-Do not select an issue already labeled `followup-in-progress` or `needs-cto-review`.
+Do not select an issue already labeled `followup-in-progress`. Also do not select an issue whose existing PR is already labeled `needs-cto-review`.
 
 If no eligible issue exists, stop and report that the follow-up queue is empty or blocked.
 
@@ -126,7 +126,7 @@ If the follow-up asks for a code correction, also run the narrowest tests that d
 
 Record every command exactly as executed and its result. Never claim a check passed unless it actually ran successfully or an authoritative completed GitHub check proves it.
 
-If a requested verification cannot run, do not mark the PR ready and do not move the issue to `needs-cto-review`. Leave it `followup-in-progress`, post the blocker with exact evidence, and stop without pretending handoff is complete.
+If a requested verification cannot run, do not mark the PR ready and do not add `needs-cto-review` to the PR. Leave the issue `followup-in-progress`, post the blocker with exact evidence, and stop without pretending handoff is complete.
 
 ## Safe Push Rules
 
@@ -166,14 +166,14 @@ Then perform the state transition in this order:
 
 1. mark the PR **Ready for review**;
 2. remove `followup-in-progress` from the issue;
-3. add `needs-cto-review` to the issue.
+3. add `needs-cto-review` to the **pull request**.
 
-Final issue state should be:
+Final state should be:
 
 ```text
-needs-followup        absent
-followup-in-progress  absent
-needs-cto-review      present
+issue: needs-followup        absent
+issue: followup-in-progress  absent
+PR:    needs-cto-review      present
 ```
 
 Do not close the issue. Do not merge or approve the PR. CTO/reviewer owns final disposition.
@@ -186,7 +186,7 @@ If the follow-up cannot be completed:
 
 - keep `followup-in-progress` so ownership/blockage remains visible;
 - leave a concise issue or PR comment describing the exact blocker, evidence, and required next step;
-- do not add `needs-cto-review`;
+- do not add `needs-cto-review` to the PR;
 - do not mark the PR ready if required verification is incomplete or failing.
 
 If you determine immediately after claiming that the follow-up is invalid, already obsolete, or points to the wrong PR, restore `needs-followup`, remove `followup-in-progress`, explain why, and stop.
@@ -195,7 +195,7 @@ If you determine immediately after claiming that the follow-up is invalid, alrea
 
 Report one of these terminal states:
 
-- `HANDED OFF` — follow-up completed, PR ready, issue labeled `needs-cto-review`.
+- `HANDED OFF` — follow-up completed, PR ready and labeled `needs-cto-review`.
 - `IN PROGRESS: BLOCKED` — claim retained because work cannot safely complete; blocker posted.
 - `RELEASED` — claim was invalidated before meaningful work; `needs-followup` restored.
 - `NO ELIGIBLE ISSUE` — no unclaimed actionable `needs-followup` issue with one unambiguous existing PR.
