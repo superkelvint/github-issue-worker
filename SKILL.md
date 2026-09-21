@@ -1,6 +1,6 @@
 ---
-name: github-issue-worker
-description: Autonomously select, claim, implement, verify, and submit one GitHub issue as a pull request, with an optional keyword argument that restricts selection to matching open issues. Use when asked to pick work from a repository's open issues, optionally filtered by a term such as `$github-issue-worker hnsw`, claim an issue before coding, fix a named or selected issue, or run an issue-to-PR coding-agent workflow. Enforces race-safe claiming with an atomic remote branch, repository AGENTS.md instructions, regression-test-first bug fixes, smallest-scope implementation, verification, and PR handoff without auto-merging.
+name: issue
+description: Autonomously select, claim, implement, verify, and submit one GitHub issue as a pull request, with an optional keyword argument that restricts selection to matching open issues. Use when asked to pick work from a repository's open issues, optionally filtered by a term such as `$issue hnsw`, claim an issue before coding, fix a named or selected issue, or run an issue-to-PR coding-agent workflow. Enforces race-safe claiming with an atomic remote branch, repository AGENTS.md instructions, regression-test-first bug fixes, smallest-scope implementation, verification, and PR handoff without auto-merging.
 ---
 
 # GitHub Issue Worker
@@ -39,9 +39,9 @@ If a race-safe remote claim cannot be created, do not start implementation.
 Treat text supplied after the skill name as an optional issue-selection filter. Examples:
 
 ```text
-$github-issue-worker
-$github-issue-worker hnsw
-$github-issue-worker "schema fidelity"
+$issue
+$issue hnsw
+$issue "schema fidelity"
 ```
 
 With no argument, consider all open issues. With an argument, treat the entire trailing text as one case-insensitive keyword/phrase filter and only consider open issues matching it. Search issue title and body; GitHub search results may also surface matches from comments.
