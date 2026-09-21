@@ -1,6 +1,6 @@
 ---
 name: github-issue-worker
-description: Autonomously select, claim, implement, verify, and submit one GitHub issue as a pull request. Use when asked to pick work from a repository's open issues, claim an issue before coding, fix a named or selected issue, or run an issue-to-PR coding-agent workflow. Enforces race-safe claiming with an atomic remote branch, repository AGENTS.md instructions, regression-test-first bug fixes, smallest-scope implementation, verification, and PR handoff without auto-merging.
+description: Autonomously select, claim, implement, verify, and submit one GitHub issue as a pull request, with an optional keyword argument that restricts selection to matching open issues. Use when asked to pick work from a repository's open issues, optionally filtered by a term such as `$github-issue-worker hnsw`, claim an issue before coding, fix a named or selected issue, or run an issue-to-PR coding-agent workflow. Enforces race-safe claiming with an atomic remote branch, repository AGENTS.md instructions, regression-test-first bug fixes, smallest-scope implementation, verification, and PR handoff without auto-merging.
 ---
 
 # GitHub Issue Worker
@@ -21,7 +21,7 @@ If a race-safe remote claim cannot be created, do not start implementation.
 ## Workflow
 
 1. Identify the repository and refresh the default branch.
-2. Inspect open issues and choose one suitable unit of work, unless the user already named an issue.
+2. Inspect open issues and choose one suitable unit of work, unless the user already named an issue. If the invocation includes an optional keyword argument, restrict the candidate set to matching issues first.
 3. Read the complete issue and comments before claiming it.
 4. Claim it atomically by creating the canonical remote work branch.
 5. Re-read the issue after claiming and verify no conflicting work or state change appeared.
@@ -34,9 +34,37 @@ If a race-safe remote claim cannot be created, do not start implementation.
 12. Open a PR referencing the issue with `Fixes #<number>` and report verification evidence.
 13. Stop. Never merge the PR or manually close the issue unless the user explicitly asks.
 
+## Optional Issue Filter Argument
+
+Treat text supplied after the skill name as an optional issue-selection filter. Examples:
+
+```text
+$github-issue-worker
+$github-issue-worker hnsw
+$github-issue-worker "schema fidelity"
+```
+
+With no argument, consider all open issues. With an argument, treat the entire trailing text as one case-insensitive keyword/phrase filter and only consider open issues matching it. Search issue title and body; GitHub search results may also surface matches from comments.
+
+Prefer GitHub issue search rather than retrieving every issue and filtering mentally:
+
+```bash
+gh issue list --state open --search "<filter>" --limit 100 --json number,title,body,labels,assignees,url
+```
+
+The filter is a hard eligibility constraint, not a preference:
+
+- Never fall back to non-matching issues when a filter was supplied.
+- If no open issue matches, stop and report that no eligible issues matched the filter.
+- If matching issues exist but none are safely actionable, stop and report why rather than broadening the search.
+- After a claim collision, choose another issue only from the same filtered candidate set.
+- Preserve the filter for the entire run; do not silently reinterpret or drop it later.
+
+If the user explicitly names an issue number, that direct selection takes precedence over the keyword-filter flow.
+
 ## Select One Issue
 
-List open issues, then inspect promising candidates individually. Prefer work that is:
+List open issues, applying the optional issue filter first when present, then inspect promising eligible candidates individually. Prefer work that is:
 
 - atomic and reviewable in one PR;
 - clearly scoped with concrete expected behavior or acceptance criteria;
@@ -48,7 +76,7 @@ Reject as a candidate when it is an epic, umbrella task, vague investigation, bl
 
 Do not pick by title alone. Read the body and current comments. Before claiming, check for an existing canonical branch `codex/issue-<number>` and for active PRs referencing or implementing the issue.
 
-If no issue is safely actionable, stop and report the concrete blocker rather than inventing work.
+If no eligible issue is safely actionable, stop and report the concrete blocker rather than inventing work or broadening an active filter.
 
 ## Claim Protocol: Remote Branch Is the Lock
 
