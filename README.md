@@ -22,14 +22,14 @@ The important concurrency rule is deliberately simple: `codex/issue-N` is the ca
 Consider all open issues:
 
 ```text
-$github-issue-worker
+$issue
 ```
 
 Restrict selection to matching issues:
 
 ```text
-$github-issue-worker hnsw
-$github-issue-worker "schema fidelity"
+$issue hnsw
+$issue "schema fidelity"
 ```
 
 The argument is a hard filter. If nothing matching it is actionable, the worker stops instead of selecting an unrelated issue.
