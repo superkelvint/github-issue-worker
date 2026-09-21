@@ -54,16 +54,16 @@ issue-followup/
 
 ## Local install
 
-The simplest installation is to clone this repository directly as your Codex skills directory:
+The simplest installation is to clone this repository directly as your Codex user skills directory:
 
 ~~~bash
-git clone https://github.com/superkelvint/github-issue-worker.git ~/.codex/skills
+git clone https://github.com/superkelvint/github-issue-worker.git ~/.agents/skills
 ~~~
 
 That produces the discovery layout directly:
 
 ~~~text
-~/.codex/skills/
+~/.agents/skills/
   issue/SKILL.md
   verify/SKILL.md
   issue-followup/SKILL.md
@@ -74,18 +74,18 @@ Then restart Codex if the skills do not appear immediately.
 Update all three skills later with:
 
 ~~~bash
-git -C ~/.codex/skills pull
+git -C ~/.agents/skills pull
 ~~~
 
-### If `~/.codex/skills` already contains other skills
+### If `~/.agents/skills` already contains other skills
 
 Do not clone over an existing non-empty directory. In that case, keep this repository elsewhere and symlink its three skill directories:
 
 ~~~bash
 git clone https://github.com/superkelvint/github-issue-worker.git ~/.codex/github-issue-worker
-ln -s ~/.codex/github-issue-worker/issue ~/.codex/skills/issue
-ln -s ~/.codex/github-issue-worker/verify ~/.codex/skills/verify
-ln -s ~/.codex/github-issue-worker/issue-followup ~/.codex/skills/issue-followup
+ln -s ~/.codex/github-issue-worker/issue ~/.agents/skills/issue
+ln -s ~/.codex/github-issue-worker/verify ~/.agents/skills/verify
+ln -s ~/.codex/github-issue-worker/issue-followup ~/.agents/skills/issue-followup
 ~~~
 
 If you previously installed an older copy of any of these skills, remove that old copy or symlink first so Codex does not discover duplicate skill names.
