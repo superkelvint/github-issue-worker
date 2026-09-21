@@ -16,6 +16,7 @@ Before mutating issue or PR state:
 - Work inside a Git checkout of the target repository.
 - Require `git` for local repository work plus GitHub write access through the runtime's supported remote interface. In ChatGPT, native GitHub access satisfies the remote requirement; do not require `gh`.
 - Read repository-root `AGENTS.md` and any more-specific `AGENTS.md` files governing files you may touch.
+- Treat `AGENTS.md` as the authoritative environment/build/worktree recovery guide. Environment, linker, SDK, dependency, cache, or worktree failures require re-reading and executing the applicable `AGENTS.md` recovery instructions before the follow-up may be called blocked.
 - Preserve unrelated local changes. Prefer an isolated worktree for follow-up work.
 - Identify exactly one existing open PR associated with the follow-up issue before claiming it.
 
@@ -125,6 +126,19 @@ Do not broaden the PR with unrelated cleanup, refactors, dependency churn, or sp
 
 If no code change is required and the follow-up is only missing verification, do not manufacture a commit. Run the requested verification against the existing PR head and hand it back with evidence.
 
+## Environment recovery
+
+A verification failure caused by repository setup is follow-up work, not a handoff blocker by default.
+
+For any setup, toolchain, linker, native SDK, dependency, cache, generated-artifact, worktree, formatter, lint, or test-environment failure:
+
+1. Re-read the applicable repository-root and subtree `AGENTS.md` files.
+2. Run the diagnostics and setup commands they prescribe before diagnosing product code.
+3. Apply locally actionable environment fixes they describe, including required symlinks, documented environment overrides, cache/bootstrap commands, and worktree preparation.
+4. Retry the originally requested verification after remediation.
+5. Never stop at `pre-existing` or `environmental` when `AGENTS.md` provides a recovery path or the problem is locally actionable.
+6. Keep the follow-up blocked only when the documented recovery path is exhausted and the remaining cause is genuinely external/non-actionable; post exact commands, evidence, and the required next step.
+
 ## Verification
 
 Run exactly the missing or requested verification first.
@@ -133,7 +147,7 @@ If the follow-up asks for a code correction, also run the narrowest tests that d
 
 Record every command exactly as executed and its result. Never claim a check passed unless it actually ran successfully or an authoritative completed GitHub check proves it.
 
-If a requested verification cannot run, do not mark the PR ready and do not add `needs-cto-review` to the PR. Leave the issue `followup-in-progress`, post the blocker with exact evidence, and stop without pretending handoff is complete.
+If a requested verification cannot run, execute **Environment recovery** first. Only if that recovery is exhausted and a genuine external/non-actionable blocker remains should you leave the issue `followup-in-progress`, post the blocker with exact evidence, and stop. Do not mark the PR ready or add `needs-cto-review` while required verification is incomplete.
 
 ## Safe Push Rules
 
