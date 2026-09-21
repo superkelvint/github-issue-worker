@@ -21,7 +21,7 @@ If a race-safe remote claim cannot be created, do not start implementation.
 ## Workflow
 
 1. Identify the repository and refresh the default branch.
-2. Inspect open issues and choose one suitable unit of work, unless the user already named an issue. If the invocation includes an optional keyword argument, restrict the candidate set to matching issues first. Exclude issues carrying the reserved follow-up/review labels `needs-followup`, `followup-in-progress`, or `needs-cto-review` from fresh-work selection.
+2. Inspect open issues and choose one suitable unit of work, unless the user already named an issue. If the invocation includes an optional keyword argument, restrict the candidate set to matching issues first. Exclude issues carrying `needs-followup` or `followup-in-progress`, and exclude issues already represented by an open pull request labeled `needs-cto-review`, from fresh-work selection.
 3. Read the complete issue and comments before claiming it.
 4. Claim it atomically by creating the canonical remote work branch.
 5. Re-read the issue after claiming and verify no conflicting work or state change appeared.
@@ -33,8 +33,9 @@ If a race-safe remote claim cannot be created, do not start implementation.
 11. Review the diff for scope, generated files, accidental formatting churn, secrets, and unrelated edits.
 12. Commit and push the work branch.
 13. Open a PR referencing the issue with `Fixes #<number>` and report verification evidence.
-14. Before terminating after a successful claim, enforce the claim-cleanup invariant: either an implementation PR exists for the claimed branch, or release the claim. Never leave a claimed issue stranded.
-15. Stop. Never merge the PR or manually close the issue unless the user explicitly asks.
+14. When all required verification has passed and the PR is ready for independent review, add the `needs-cto-review` label to the **pull request**. This label belongs on the PR, not the issue.
+15. Before terminating after a successful claim, enforce the claim-cleanup invariant: either an implementation PR exists for the claimed branch, or release the claim. Never leave a claimed issue stranded.
+16. Stop. Never merge the PR or manually close the issue unless the user explicitly asks.
 
 ## Optional Issue Filter Argument
 
@@ -66,28 +67,28 @@ If the user explicitly names an issue number, that direct selection takes preced
 
 ## Follow-up and CTO Review Labels
 
-Treat these labels as reserved workflow states, not ordinary fresh-work issues:
+Treat these labels as reserved workflow state:
 
 ```text
-needs-followup
+issue: needs-followup
     ↓
-followup-in-progress
+issue: followup-in-progress
     ↓
-needs-cto-review
+PR: needs-cto-review
 ```
 
 Their meaning is:
 
-- `needs-followup` — the CTO/reviewer requested a concrete correction or
-  missing verification on an existing pull request. This is work for the
-  dedicated follow-up workflow, normally `$issue-followup`, not a new
+- `needs-followup` on the **issue** — the CTO/reviewer requested a concrete
+  correction or missing verification on the existing pull request. This is work
+  for the dedicated follow-up workflow, normally `$issue-followup`, not a new
   `$issue` implementation branch.
-- `followup-in-progress` — a follow-up worker has claimed that repair and is
-  working on the existing pull request. Do not take or duplicate it.
-- `needs-cto-review` — the follow-up worker claims the requested work is
-  complete, has posted exact verification evidence, and has handed the existing
-  pull request back to the CTO/reviewer. Do not take or modify it as fresh
-  issue work.
+- `followup-in-progress` on the **issue** — a follow-up worker has claimed
+  that repair and is working on the existing pull request. Do not duplicate it.
+- `needs-cto-review` on the **pull request** — the implementation or
+  follow-up worker claims the PR is complete, has posted the required
+  verification evidence, and is handing that PR to the CTO/reviewer. This is a
+  review signal, not approval or verification.
 
 For a named issue carrying `needs-followup`, do not create
 `codex/issue-<number>` or a replacement pull request. Use the follow-up
@@ -95,14 +96,19 @@ workflow against the existing PR. The follow-up worker must remove
 `needs-followup`, add `followup-in-progress`, and comment
 `Claimed follow-up; working on PR #X.` before work. On successful completion
 it must post what changed plus exact verification commands/results, mark the
-existing PR Ready for review, remove `followup-in-progress`, and add
-`needs-cto-review`.
+existing PR Ready for review, remove `followup-in-progress` from the issue,
+and add `needs-cto-review` to the **PR**.
 
-If required follow-up verification is still failing or blocked, keep
-`followup-in-progress` and post the exact blocker; do not add
-`needs-cto-review` and do not mark the PR ready. The CTO/reviewer owns the
-next disposition: merge when independently verified, or transition
-`needs-cto-review` back to `needs-followup` with actionable feedback.
+For ordinary fresh `$issue` work, once the PR exists and every required
+verification gate passes, add `needs-cto-review` to that **PR** before
+handoff. Do not put `needs-cto-review` on the issue.
+
+If required verification is still failing or blocked, do not add
+`needs-cto-review` to the PR and do not mark it ready merely to signal
+progress. Preserve the PR as draft when appropriate and report the exact
+blocker. The CTO/reviewer owns the next disposition: merge when independently
+verified, or request follow-up by removing `needs-cto-review` from the PR and
+adding `needs-followup` to the issue with actionable feedback.
 
 ## Select One Issue
 
@@ -114,7 +120,7 @@ List open issues, applying the optional issue filter first when present, then in
 - unblocked and not already represented by an active PR;
 - low enough in blast radius to verify confidently in the current environment.
 
-Never select an issue carrying `needs-followup`, `followup-in-progress`, or `needs-cto-review` as fresh work. Those states belong to the follow-up/CTO-review lifecycle above.
+Never select an issue carrying `needs-followup` or `followup-in-progress` as fresh work. Also do not select an issue whose existing open PR is labeled `needs-cto-review`; that PR is already waiting for CTO review.
 
 Reject as a candidate when it is an epic, umbrella task, vague investigation, blocked dependency, clearly assigned active work, or too broad for one reviewable PR.
 
@@ -278,6 +284,10 @@ Open a PR against the repository's default branch. The PR body must contain:
 - regression or acceptance coverage added;
 - verification commands and results;
 - any known limitation or environmental gate that could not be run.
+
+After all required verification succeeds, add `needs-cto-review` to the **pull request** (for example, `gh pr edit <number> --add-label needs-cto-review`) and ensure the PR is ready for review. Do not add that label to the issue.
+
+If any required verification is blocked or failing, do not add `needs-cto-review`; keep the PR draft when appropriate and record the exact blocker.
 
 Do not merge the PR. Do not mark the issue complete independently. Let merge/maintainer review determine closure.
 
