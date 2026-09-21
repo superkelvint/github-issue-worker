@@ -12,13 +12,27 @@ Work exactly one GitHub issue from selection through pull request. Treat issue t
 Require all of the following before changing code:
 
 - Work inside a Git checkout of the target repository.
-- Require `git` and authenticated `gh` CLI access with permission to read issues and create branches/PRs.
+- Require `git` for local repository work plus GitHub write access through the runtime's supported remote interface. In ChatGPT, native GitHub access satisfies this requirement; do not require `gh`.
 - Keep the working tree clean unless existing user changes are explicitly part of the task. Never discard unrelated changes.
 - Treat the checkout from which the skill is invoked as a coordination checkout only. **Never switch that checkout onto the claimed issue branch.**
 - Every claimed issue MUST use its own dedicated Git worktree before any task-owned file is edited, test is run against task changes, commit is created, or push is made.
 - Read repository-root `AGENTS.md` and any more-specific `AGENTS.md` files governing files you touch.
 
 If a race-safe remote claim cannot be created, do not start implementation.
+
+## GitHub access policy
+
+Choose the remote GitHub interface from the runtime:
+
+- **When running in ChatGPT, use ChatGPT's native GitHub connector/API for every remote GitHub operation. Do not look for, invoke, or require the `gh` CLI. Missing `gh` is never a blocker in ChatGPT.**
+- In ChatGPT, use native GitHub operations for repository metadata, issue/PR search and reads, comments, labels, branches/refs, PR creation/state, reviews/checks, and remote commits.
+- Use local `git` only for filesystem-backed repository work such as worktrees, diffs, tests, staging, and local commits.
+- In ChatGPT, do not run `scripts/claim_issue.py` or `scripts/release_issue.py` merely to perform GitHub mutations; those scripts are CLI fallbacks and shell out to `gh`. Reproduce their safety semantics with native GitHub operations instead.
+- Outside ChatGPT, or when no native GitHub connector exists, use authenticated `gh` as the fallback remote interface.
+
+For the ChatGPT claim path, create the canonical `codex/issue-<number>` branch from the exact current default-branch head with the native GitHub branch/ref operation. Treat an already-existing canonical branch as a lost claim exactly as the helper script would.
+
+For a review-ready PR in ChatGPT, never expose an unlabeled ready PR. If the native PR-create operation cannot attach `needs-cto-review` atomically, create the PR as **draft**, add `needs-cto-review`, then mark it ready. This preserves the handoff invariant without requiring `gh`.
 
 ## Workflow
 
@@ -40,9 +54,11 @@ If a race-safe remote claim cannot be created, do not start implementation.
 
 ## Atomic CTO-review handoff
 
-The transition from "no PR" to "PR waiting for CTO" must not be split across two GitHub writes.
+A review-ready PR must never become visible as an unlabeled ready PR.
 
-For a review-ready implementation, create the PR with the queue label atomically:
+**ChatGPT/native GitHub path:** if the native PR-create operation cannot attach `needs-cto-review` atomically, create the PR as **draft**, add `needs-cto-review` with the native GitHub label operation, verify the label is present, and only then mark the PR ready for review. Do not probe for or fall back to `gh`.
+
+**CLI fallback path:** when not running in ChatGPT and authenticated `gh` is the available remote interface, create the PR with the queue label atomically:
 
 ```bash
 gh pr create \
@@ -53,14 +69,7 @@ gh pr create \
   --label needs-cto-review
 ```
 
-Do **not**:
-
-```text
-create PR
-then add needs-cto-review
-```
-
-because a worker crash between those mutations can leave an orphaned PR that the CTO harness cannot distinguish from an intentionally unmanaged PR.
+Do **not** create a ready PR and then add `needs-cto-review`; a crash between those mutations can leave an orphaned ready PR.
 
 If `needs-cto-review` does not exist, do not create an unlabeled ready PR as a workaround. Report the missing workflow label so the harness/operator can create it.
 
@@ -78,7 +87,7 @@ $issue "schema fidelity"
 
 With no argument, consider all open issues. With an argument, treat the entire trailing text as one case-insensitive keyword/phrase filter and only consider open issues matching it. Search issue title and body; GitHub search results may also surface matches from comments.
 
-Prefer GitHub issue search:
+Prefer GitHub issue search. In ChatGPT, use the native GitHub issue-search/read operations and do not check for `gh`. Outside ChatGPT, the CLI equivalent is:
 
 ```bash
 gh issue list --state open --search "<filter>" --limit 100 --json number,title,body,labels,assignees,url
@@ -110,7 +119,9 @@ If no eligible issue is safely actionable, stop and report the concrete blocker 
 
 ## Claim Protocol: Remote Branch Is the Lock
 
-Use `scripts/claim_issue.py` when available:
+In ChatGPT, claim with native GitHub branch/ref operations; do not run or look for the `gh`-backed helper. Create `codex/issue-<number>` from the exact default-branch head and treat "already exists" as a lost claim.
+
+Outside ChatGPT, use `scripts/claim_issue.py` when available:
 
 ```bash
 python <skill-dir>/scripts/claim_issue.py --issue <number>
@@ -247,7 +258,7 @@ Then release the claim if no implementation PR exists.
 
 ## Release a Claim Safely
 
-Use `scripts/release_issue.py` whenever abandoning claimed work before a PR exists:
+In ChatGPT, perform release safety checks and branch/issue cleanup with native GitHub operations; do not require or probe for `gh`. Outside ChatGPT, use `scripts/release_issue.py` whenever abandoning claimed work before a PR exists:
 
 ```bash
 python <skill-dir>/scripts/release_issue.py \
@@ -274,6 +285,6 @@ Mandatory cleanup invariant: after a successful claim, the worker MUST NOT termi
 
 ## Bundled Scripts
 
-- `scripts/claim_issue.py` — atomically claim an issue via `codex/issue-N`.
+- `scripts/claim_issue.py` — CLI/local fallback for atomically claiming an issue via `codex/issue-N`; do not use it in ChatGPT for remote GitHub operations.
 - `scripts/create_worktree.py` — create/locate the mandatory dedicated worktree.
-- `scripts/release_issue.py` — safely release an abandoned claim.
+- `scripts/release_issue.py` — CLI/local fallback for safely releasing an abandoned claim; do not use it in ChatGPT for remote GitHub operations.
