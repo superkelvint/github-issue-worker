@@ -1,6 +1,6 @@
 ---
 name: issue
-description: Autonomously select, claim, implement, verify, and submit one GitHub issue as a pull request, with an optional keyword argument that restricts selection to matching open issues. Use when asked to pick work from a repository's open issues, optionally filtered by a term such as `$issue hnsw`, claim an issue before coding, fix a named or selected issue, or run an issue-to-PR coding-agent workflow. Enforces race-safe claiming with an atomic remote branch, repository AGENTS.md instructions, regression-test-first bug fixes, smallest-scope implementation, verification, PR handoff without auto-merging, and mandatory cleanup so a claimed issue is never stranded on a terminal path.
+description: Autonomously select, claim, implement, verify, and submit one GitHub issue as a pull request, with an optional keyword argument that restricts selection to matching open issues. Use when asked to pick work from a repository's open issues, optionally filtered by a term such as `$issue hnsw`, claim an issue before coding, fix a named or selected issue, or run an issue-to-PR coding-agent workflow. Enforces race-safe claiming, repository AGENTS.md instructions, regression-test-first fixes, focused verification, PR handoff without auto-merging, mandatory claim cleanup, and awareness of the reserved `needs-followup` -> `followup-in-progress` -> `needs-cto-review` lifecycle.
 ---
 
 # GitHub Issue Worker
@@ -21,7 +21,7 @@ If a race-safe remote claim cannot be created, do not start implementation.
 ## Workflow
 
 1. Identify the repository and refresh the default branch.
-2. Inspect open issues and choose one suitable unit of work, unless the user already named an issue. If the invocation includes an optional keyword argument, restrict the candidate set to matching issues first.
+2. Inspect open issues and choose one suitable unit of work, unless the user already named an issue. If the invocation includes an optional keyword argument, restrict the candidate set to matching issues first. Exclude issues carrying the reserved follow-up/review labels `needs-followup`, `followup-in-progress`, or `needs-cto-review` from fresh-work selection.
 3. Read the complete issue and comments before claiming it.
 4. Claim it atomically by creating the canonical remote work branch.
 5. Re-read the issue after claiming and verify no conflicting work or state change appeared.
@@ -64,6 +64,46 @@ The filter is a hard eligibility constraint, not a preference:
 
 If the user explicitly names an issue number, that direct selection takes precedence over the keyword-filter flow.
 
+## Follow-up and CTO Review Labels
+
+Treat these labels as reserved workflow states, not ordinary fresh-work issues:
+
+```text
+needs-followup
+    ↓
+followup-in-progress
+    ↓
+needs-cto-review
+```
+
+Their meaning is:
+
+- `needs-followup` — the CTO/reviewer requested a concrete correction or
+  missing verification on an existing pull request. This is work for the
+  dedicated follow-up workflow, normally `$issue-followup`, not a new
+  `$issue` implementation branch.
+- `followup-in-progress` — a follow-up worker has claimed that repair and is
+  working on the existing pull request. Do not take or duplicate it.
+- `needs-cto-review` — the follow-up worker claims the requested work is
+  complete, has posted exact verification evidence, and has handed the existing
+  pull request back to the CTO/reviewer. Do not take or modify it as fresh
+  issue work.
+
+For a named issue carrying `needs-followup`, do not create
+`codex/issue-<number>` or a replacement pull request. Use the follow-up
+workflow against the existing PR. The follow-up worker must remove
+`needs-followup`, add `followup-in-progress`, and comment
+`Claimed follow-up; working on PR #X.` before work. On successful completion
+it must post what changed plus exact verification commands/results, mark the
+existing PR Ready for review, remove `followup-in-progress`, and add
+`needs-cto-review`.
+
+If required follow-up verification is still failing or blocked, keep
+`followup-in-progress` and post the exact blocker; do not add
+`needs-cto-review` and do not mark the PR ready. The CTO/reviewer owns the
+next disposition: merge when independently verified, or transition
+`needs-cto-review` back to `needs-followup` with actionable feedback.
+
 ## Select One Issue
 
 List open issues, applying the optional issue filter first when present, then inspect promising eligible candidates individually. Prefer work that is:
@@ -73,6 +113,8 @@ List open issues, applying the optional issue filter first when present, then in
 - reproducible or testable;
 - unblocked and not already represented by an active PR;
 - low enough in blast radius to verify confidently in the current environment.
+
+Never select an issue carrying `needs-followup`, `followup-in-progress`, or `needs-cto-review` as fresh work. Those states belong to the follow-up/CTO-review lifecycle above.
 
 Reject as a candidate when it is an epic, umbrella task, vague investigation, blocked dependency, clearly assigned active work, or too broad for one reviewable PR.
 
