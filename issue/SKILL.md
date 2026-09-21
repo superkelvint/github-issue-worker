@@ -1,6 +1,6 @@
 ---
 name: issue
-description: Autonomously select, claim, implement, verify, and submit one GitHub issue as a pull request, with an optional keyword argument that restricts selection to matching open issues. Use when asked to pick work from a repository's open issues, optionally filtered by a term such as `$issue hnsw`, claim an issue before coding, fix a named or selected issue, or run an issue-to-PR coding-agent workflow. Enforces race-safe claiming, repository AGENTS.md instructions, regression-test-first fixes, focused verification, PR handoff without auto-merging, mandatory claim cleanup, and awareness of the reserved `needs-followup` -> `followup-in-progress` -> `needs-cto-review` lifecycle.
+description: Autonomously select, claim, implement, verify, and submit one GitHub issue as a pull request, with an optional keyword argument that restricts selection to matching open issues. Use when asked to pick work from a repository's open issues, optionally filtered by a term such as `$issue hnsw`, claim an issue before coding, fix a named or selected issue, or run an issue-to-PR coding-agent workflow. Enforces race-safe claiming, repository AGENTS.md instructions, regression-test-first fixes, focused verification, PR handoff without auto-merging, mandatory claim cleanup, and awareness of the reserved `needs-followup`, `followup-in-progress`, and `needs-cto-review` lifecycle.
 ---
 
 # GitHub Issue Worker
