@@ -54,24 +54,38 @@ issue-followup/
 
 ## Local install
 
-Clone the repository once, then expose each skill directory under Codex's skill directory:
+The simplest installation is to clone this repository directly as your Codex skills directory:
 
 ~~~bash
-mkdir -p ~/.codex/skills ~/.codex/github-skill-repos
-git clone https://github.com/superkelvint/github-issue-worker.git \
-  ~/.codex/github-skill-repos/github-issue-worker
-ln -s ~/.codex/github-skill-repos/github-issue-worker/issue ~/.codex/skills/issue
-ln -s ~/.codex/github-skill-repos/github-issue-worker/verify ~/.codex/skills/verify
-ln -s ~/.codex/github-skill-repos/github-issue-worker/issue-followup ~/.codex/skills/issue-followup
+git clone https://github.com/superkelvint/github-issue-worker.git ~/.codex/skills
 ~~~
 
-If you previously installed the old repository-root $issue skill, remove that old installation first to avoid duplicate discovery.
+That produces the discovery layout directly:
 
-Update all skills later with:
+~~~text
+~/.codex/skills/
+  issue/SKILL.md
+  verify/SKILL.md
+  issue-followup/SKILL.md
+~~~
+
+Then restart Codex if the skills do not appear immediately.
+
+Update all three skills later with:
 
 ~~~bash
-cd ~/.codex/github-skill-repos/github-issue-worker
-git pull
+git -C ~/.codex/skills pull
 ~~~
 
-Restart Codex after installing or updating skills.
+### If `~/.codex/skills` already contains other skills
+
+Do not clone over an existing non-empty directory. In that case, keep this repository elsewhere and symlink its three skill directories:
+
+~~~bash
+git clone https://github.com/superkelvint/github-issue-worker.git ~/.codex/github-issue-worker
+ln -s ~/.codex/github-issue-worker/issue ~/.codex/skills/issue
+ln -s ~/.codex/github-issue-worker/verify ~/.codex/skills/verify
+ln -s ~/.codex/github-issue-worker/issue-followup ~/.codex/skills/issue-followup
+~~~
+
+If you previously installed an older copy of any of these skills, remove that old copy or symlink first so Codex does not discover duplicate skill names.
