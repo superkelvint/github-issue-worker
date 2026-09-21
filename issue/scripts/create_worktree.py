@@ -120,7 +120,7 @@ def main() -> int:
     else:
         git("worktree", "add", "--track", "-b", branch, str(target), remote_ref, cwd=root)
 
-    actual_branch = rev_parse(target, "--abbrev-ref HEAD")
+    actual_branch = git("rev-parse", "--abbrev-ref", "HEAD", cwd=target).stdout.strip()
     head = rev_parse(target, "HEAD")
     if actual_branch != branch or head != remote_sha:
         raise RuntimeError(
