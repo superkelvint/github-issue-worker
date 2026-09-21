@@ -1,6 +1,6 @@
 ---
 name: issue
-description: Autonomously select, claim, implement, verify, and submit one GitHub issue as a pull request, with an optional keyword argument that restricts selection to matching open issues. Use when asked to pick work from a repository's open issues, optionally filtered by a term such as `$issue hnsw`, claim an issue before coding, fix a named or selected issue, or run an issue-to-PR coding-agent workflow. Enforces race-safe claiming with an atomic remote branch, repository AGENTS.md instructions, regression-test-first bug fixes, smallest-scope implementation, verification, and PR handoff without auto-merging.
+description: Autonomously select, claim, implement, verify, and submit one GitHub issue as a pull request, with an optional keyword argument that restricts selection to matching open issues. Use when asked to pick work from a repository's open issues, optionally filtered by a term such as `$issue hnsw`, claim an issue before coding, fix a named or selected issue, or run an issue-to-PR coding-agent workflow. Enforces race-safe claiming with an atomic remote branch, repository AGENTS.md instructions, regression-test-first bug fixes, smallest-scope implementation, verification, PR handoff without auto-merging, and mandatory cleanup so a claimed issue is never stranded on a terminal path.
 ---
 
 # GitHub Issue Worker
@@ -32,7 +32,7 @@ If a race-safe remote claim cannot be created, do not start implementation.
 10. Review the diff for scope, generated files, accidental formatting churn, secrets, and unrelated edits.
 11. Commit and push the work branch.
 12. Open a PR referencing the issue with `Fixes #<number>` and report verification evidence.
-13. Stop. Never merge the PR or manually close the issue unless the user explicitly asks.
+13. Before terminating after a successful claim, enforce the claim-cleanup invariant: either an implementation PR exists for the claimed branch, or release the claim. Never leave a claimed issue stranded.\n14. Stop. Never merge the PR or manually close the issue unless the user explicitly asks.
 
 ## Optional Issue Filter Argument
 
@@ -208,6 +208,15 @@ python <skill-dir>/scripts/release_issue.py \
 
 The release script refuses to delete a claim branch that has an open PR or commits ahead of the default branch unless explicitly forced. Prefer preserving useful work as a draft PR over deleting it.
 
+**Mandatory cleanup invariant:** after a successful claim, the worker MUST NOT terminate, give up, switch tasks, or report failure while leaving the issue claimed. Before any terminal exit, exactly one of these must be true:
+
+1. an implementation PR exists for the claimed branch, preserving the work and ownership state; or
+2. the claim has been released with release_issue.py.
+
+Apply this invariant to every failure path after claiming, including unreproducible bugs, failing verification, missing dependencies, environment/tool failures, scope expansion, invalid or superseded specifications, permission loss, and user-requested abandonment. Use a finally-style mental model: once claimed, cleanup is mandatory before exit.
+
+If release is unsafe because the branch contains useful commits or already has a PR, do not destroy work. Preserve it, prefer opening or retaining a draft PR when appropriate, and explicitly report why the claim remains. This is the only acceptable exception to automatic release.
+
 When release succeeds, remove only this worker's assignment/claim metadata. Never remove another assignee or delete unrelated branches.
 
 ## Failure Rules
@@ -219,7 +228,7 @@ When release succeeds, remove only this worker's assignment/claim metadata. Neve
 - Required verification cannot run: document the exact environmental blocker; never report success.
 - Scope expands beyond one reviewable issue: stop and propose splitting follow-up work rather than silently broadening the PR.
 
-## Bundled Scripts
+- Any terminal failure after a successful claim: open/preserve an implementation PR or release the claim before exiting. Never strand a claim.\n\n## Bundled Scripts
 
 - `scripts/claim_issue.py` — atomically claim an issue by creating `codex/issue-N`, then add best-effort issue metadata.
 - `scripts/release_issue.py` — safely release an abandoned claim while protecting branches with commits or PRs.

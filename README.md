@@ -1,48 +1,63 @@
-# GitHub Issue Worker
+# GitHub Coding Agent Skills
 
-A Codex/ChatGPT skill for autonomous **issue → claim → regression test → implementation → verification → pull request** work.
+This repository contains two independent Codex/ChatGPT skills for a GitHub issue-to-PR workflow.
 
-The important concurrency rule is deliberately simple: `codex/issue-N` is the canonical remote claim branch. It is created through GitHub's create-ref API, so concurrent workers racing for the same issue do not both proceed. The worker that cannot create the ref must choose another issue.
+## $issue
 
-## Behavior
+Select one open issue, optionally filter by keyword, claim it atomically, implement it test-first, verify it, and open a PR.
 
-- inspects open GitHub issues and selects one atomic, reviewable task;
-- optionally restricts selection to issues matching a keyword or phrase;
-- reads repository `AGENTS.md` instructions before modifying code;
-- claims exactly one issue before coding;
-- writes a failing regression test first for reported bugs;
-- implements the smallest correct fix;
-- runs focused and repository-required verification;
-- pushes the claimed branch and opens a PR containing `Fixes #N`;
-- never auto-merges or independently closes the issue;
-- safely releases abandoned claims with an actionable explanation.
+Examples:
 
-## Usage
-
-Consider all open issues:
-
-```text
+~~~text
 $issue
-```
-
-Restrict selection to matching issues:
-
-```text
 $issue hnsw
 $issue "schema fidelity"
-```
+~~~
 
-The argument is a hard filter. If nothing matching it is actionable, the worker stops instead of selecting an unrelated issue.
+Once $issue successfully claims an issue, it may not terminate with the issue stranded: it must either open/preserve an implementation PR or release the claim.
 
-## Requirements
+## $verify
 
-The coding environment needs `git`, Python 3, and an authenticated GitHub CLI (`gh`) with write access to the target repository.
+Process all open PRs that are still in GitHub draft state. Verify the exact head, run repository-required tests/checks, repair PR-scoped failures when safe, push fixes to the existing branch, reverify, and mark the PR ready for review only when all required gates pass.
 
-## Install
+~~~text
+$verify
+~~~
 
-Use this repository as a skill source in your Codex/ChatGPT skill setup, or package the directory with the OpenAI skill packaging tooling. The skill entrypoint is [`SKILL.md`](SKILL.md).
+$verify never merges or approves PRs. Non-draft PRs are outside its queue.
 
-## Included utilities
+## Layout
 
-- `scripts/claim_issue.py` — atomic remote claim plus best-effort assignment/comment/label metadata.
-- `scripts/release_issue.py` — release an abandoned claim while refusing to delete branches that already contain work or have an open PR.
+~~~text
+issue/
+  SKILL.md
+  agents/openai.yaml
+  scripts/claim_issue.py
+  scripts/release_issue.py
+verify/
+  SKILL.md
+  agents/openai.yaml
+~~~
+
+## Local install
+
+Clone the repository once, then expose each skill directory under Codex's skill directory:
+
+~~~bash
+mkdir -p ~/.codex/skills ~/.codex/github-skill-repos
+git clone https://github.com/superkelvint/github-issue-worker.git \
+  ~/.codex/github-skill-repos/github-issue-worker
+ln -s ~/.codex/github-skill-repos/github-issue-worker/issue ~/.codex/skills/issue
+ln -s ~/.codex/github-skill-repos/github-issue-worker/verify ~/.codex/skills/verify
+~~~
+
+If you previously installed the old repository-root $issue skill, remove that old installation first to avoid duplicate discovery.
+
+Update both skills later with:
+
+~~~bash
+cd ~/.codex/github-skill-repos/github-issue-worker
+git pull
+~~~
+
+Restart Codex after installing or updating skills.
