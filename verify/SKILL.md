@@ -30,7 +30,7 @@ Never merge, approve, or close a PR. The only successful state transition is Git
 Before processing PRs:
 
 - Work inside a Git checkout of the target repository.
-- Require git for local repository work plus GitHub access through the runtime's supported remote interface. In ChatGPT, native GitHub access satisfies the remote requirement; do not require gh.
+- Require git for local repository work plus authenticated GitHub access through either the runtime's native GitHub interface or `gh`. A missing native connector is not a GitHub blocker when authenticated `gh` is available.
 - Read repository-root AGENTS.md; read more-specific AGENTS.md files before modifying governed files.
 - Treat repository-root AGENTS.md as the entry point for authoritative repository instructions. Follow any build/setup/environment documents it delegates to (for example BUILDING.md) plus any more-specific AGENTS.md files. Any setup, toolchain, linker, SDK, dependency, cache, or worktree failure requires re-reading and executing those instructions before declaring verification blocked.
 - Preserve unrelated local changes. Prefer isolated temporary worktrees for PR verification and repair.
@@ -38,16 +38,21 @@ Before processing PRs:
 
 ## GitHub access policy
 
-- **When running in ChatGPT, use ChatGPT's native GitHub connector/API for every remote GitHub operation. Do not look for, invoke, or require `gh`; missing `gh` is never a blocker in ChatGPT.**
-- Use native GitHub operations for PR enumeration, metadata, diffs, comments/reviews, checks, head-SHA refreshes, and draft/ready transitions.
-- Use local `git` only for filesystem-backed checkout/worktree, testing, diffs, commits, and pushes when needed.
-- Outside ChatGPT, or when no native GitHub connector exists, authenticated `gh` is the fallback remote interface.
+Select the first remote GitHub interface that is actually available and sufficient for the operation:
+
+1. **Prefer the runtime's native GitHub connector/API when it is exposed and supports the required operation.**
+2. **If the native connector is absent, not exposed, lacks the required operation, or cannot access the repository while an authenticated CLI may be able to, immediately fall back to authenticated `gh`.** This fallback is valid inside ChatGPT/Codex runtimes too.
+3. Before declaring GitHub unavailable on the CLI path, run `gh auth status` (or an equivalent authenticated `gh` command) and use `gh issue`, `gh pr`, `gh api`, or the bundled helper scripts as appropriate.
+4. **Never substitute public web search, browser scraping, or unauthenticated `curl https://api.github.com/...` for authenticated repository operations.** A public 404 against a private repository is not evidence that the issue, PR, or repository does not exist.
+5. Report GitHub access as blocked only after both the native interface and authenticated `gh` are unavailable or insufficient for the required operation.
+
+Use local `git` for filesystem-backed repository work such as worktrees, diffs, tests, staging, commits, and normal branch pushes. Use the selected GitHub interface for issue/PR metadata, comments, labels, branch/ref coordination, PR state, reviews, and checks.
 
 ## Enumerate only draft PRs
 
 List all open PRs and select only those with isDraft == true.
 
-In ChatGPT, list and filter open PRs with native GitHub PR search/read operations and do not probe for `gh`. Outside ChatGPT, the CLI equivalent is:
+List and filter open PRs with native GitHub PR search/read operations when available. If the native interface is unavailable or insufficient, use authenticated `gh`:
 
 ~~~bash
 gh pr list --state open --limit 100 --json number,title,isDraft,url \
@@ -118,7 +123,7 @@ Before changing draft state:
 3. Confirm required GitHub checks are successful when the repository relies on them. Pending, cancelled, skipped-required, or failing required checks are not success.
 4. Confirm there is no unresolved verification failure discovered locally.
 
-Leave a concise verification comment when useful, including the tested SHA and commands/results, then mark it ready. In ChatGPT, use the native GitHub "mark ready for review" operation; do not look for `gh`. Outside ChatGPT, the CLI equivalent is:
+Leave a concise verification comment when useful, including the tested SHA and commands/results, then mark it ready. Use the native GitHub "mark ready for review" operation when available; otherwise use authenticated `gh`:
 
 ~~~bash
 gh pr ready <number>

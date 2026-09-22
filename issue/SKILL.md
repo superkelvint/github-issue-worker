@@ -12,7 +12,7 @@ Work toward one user-assigned GitHub outcome while preserving one-issue/one-PR i
 Require all of the following before changing code:
 
 - Work inside a Git checkout of the target repository.
-- Require `git` for local repository work plus GitHub write access through the runtime's supported remote interface. In ChatGPT, native GitHub access satisfies this requirement; do not require `gh`.
+- Require `git` for local repository work plus authenticated GitHub write access through either the runtime's native GitHub interface or `gh`. A missing native connector is not a GitHub blocker when authenticated `gh` is available.
 - Keep the working tree clean unless existing user changes are explicitly part of the task. Never discard unrelated changes.
 - Treat the checkout from which the skill is invoked as a coordination checkout only. **Never switch that checkout onto the claimed issue branch.**
 - Every claimed issue MUST use its own dedicated Git worktree before any task-owned file is edited, test is run against task changes, commit is created, or push is made.
@@ -23,17 +23,15 @@ If a race-safe remote claim cannot be created, do not start implementation.
 
 ## GitHub access policy
 
-Choose the remote GitHub interface from the runtime:
+Select the first remote GitHub interface that is actually available and sufficient for the operation:
 
-- **When running in ChatGPT, use ChatGPT's native GitHub connector/API for every remote GitHub operation. Do not look for, invoke, or require the `gh` CLI. Missing `gh` is never a blocker in ChatGPT.**
-- In ChatGPT, use native GitHub operations for repository metadata, issue/PR search and reads, comments, labels, branches/refs, PR creation/state, reviews/checks, and remote commits.
-- Use local `git` only for filesystem-backed repository work such as worktrees, diffs, tests, staging, and local commits.
-- In ChatGPT, do not run `scripts/claim_issue.py` or `scripts/release_issue.py` merely to perform GitHub mutations; those scripts are CLI fallbacks and shell out to `gh`. Reproduce their safety semantics with native GitHub operations instead.
-- Outside ChatGPT, or when no native GitHub connector exists, use authenticated `gh` as the fallback remote interface.
+1. **Prefer the runtime's native GitHub connector/API when it is exposed and supports the required operation.**
+2. **If the native connector is absent, not exposed, lacks the required operation, or cannot access the repository while an authenticated CLI may be able to, immediately fall back to authenticated `gh`.** This fallback is valid inside ChatGPT/Codex runtimes too.
+3. Before declaring GitHub unavailable on the CLI path, run `gh auth status` (or an equivalent authenticated `gh` command) and use `gh issue`, `gh pr`, `gh api`, or the bundled helper scripts as appropriate.
+4. **Never substitute public web search, browser scraping, or unauthenticated `curl https://api.github.com/...` for authenticated repository operations.** A public 404 against a private repository is not evidence that the issue, PR, or repository does not exist.
+5. Report GitHub access as blocked only after both the native interface and authenticated `gh` are unavailable or insufficient for the required operation.
 
-For the ChatGPT claim path, create the canonical `codex/issue-<number>` branch from the exact current default-branch head with the native GitHub branch/ref operation. Treat an already-existing canonical branch as a lost claim exactly as the helper script would.
-
-For a review-ready PR in ChatGPT, never expose an unlabeled ready PR. If the native PR-create operation cannot attach `needs-cto-review` atomically, create the PR as **draft**, add `needs-cto-review`, then mark it ready. This preserves the handoff invariant without requiring `gh`.
+Use local `git` for filesystem-backed repository work such as worktrees, diffs, tests, staging, commits, and normal branch pushes. Use the selected GitHub interface for issue/PR metadata, comments, labels, branch/ref coordination, PR state, reviews, and checks.
 
 ## Workflow
 
@@ -88,9 +86,9 @@ For audit/final-verification issues that explicitly say remediation issues must 
 
 A review-ready PR must never become visible as an unlabeled ready PR.
 
-**ChatGPT/native GitHub path:** if the native PR-create operation cannot attach `needs-cto-review` atomically, create the PR as **draft**, add `needs-cto-review` with the native GitHub label operation, verify the label is present, and only then mark the PR ready for review. Do not probe for or fall back to `gh`.
+**Native connector path:** if the native PR-create operation cannot attach `needs-cto-review` atomically, create the PR as **draft**, add `needs-cto-review` with the native GitHub label operation, verify the label is present, and only then mark the PR ready for review.
 
-**CLI fallback path:** when not running in ChatGPT and authenticated `gh` is the available remote interface, create the PR with the queue label atomically:
+**`gh` fallback path:** if the native connector is unavailable or insufficient, use authenticated `gh` even inside ChatGPT/Codex runtimes. Create the PR with the queue label atomically:
 
 ```bash
 gh pr create \
@@ -119,7 +117,7 @@ $issue "schema fidelity"
 
 With no argument, consider all open issues. With an argument, treat the entire trailing text as one case-insensitive keyword/phrase filter and only consider open issues matching it. Search issue title and body; GitHub search results may also surface matches from comments.
 
-Prefer GitHub issue search. In ChatGPT, use the native GitHub issue-search/read operations and do not check for `gh`. Outside ChatGPT, the CLI equivalent is:
+Prefer native GitHub issue search when it is available. If the native interface is unavailable or insufficient, use authenticated `gh`:
 
 ```bash
 gh issue list --state open --search "<filter>" --limit 100 --json number,title,body,labels,assignees,url
@@ -152,9 +150,7 @@ If the chosen issue is gated, follow **Self-unblock dependency chains** before d
 
 ## Claim Protocol: Remote Branch Is the Lock
 
-In ChatGPT, claim with native GitHub branch/ref operations; do not run or look for the `gh`-backed helper. Create `codex/issue-<number>` from the exact default-branch head and treat "already exists" as a lost claim.
-
-Outside ChatGPT, use `scripts/claim_issue.py` when available:
+Claim with native GitHub branch/ref operations when they are available. If the native interface is unavailable or insufficient, use `scripts/claim_issue.py` when available; it uses authenticated `gh` and preserves the same race-safe branch-lock semantics:
 
 ```bash
 python <skill-dir>/scripts/claim_issue.py --issue <number>
@@ -311,7 +307,7 @@ Then release the claim if no implementation PR exists.
 
 ## Release a Claim Safely
 
-In ChatGPT, perform release safety checks and branch/issue cleanup with native GitHub operations; do not require or probe for `gh`. Outside ChatGPT, use `scripts/release_issue.py` whenever abandoning claimed work before a PR exists:
+Perform release safety checks and branch/issue cleanup with native GitHub operations when available. If the native interface is unavailable or insufficient, use `scripts/release_issue.py` whenever abandoning claimed work before a PR exists:
 
 ```bash
 python <skill-dir>/scripts/release_issue.py \
@@ -338,6 +334,6 @@ Mandatory cleanup invariant: after a successful claim, the worker MUST NOT termi
 
 ## Bundled Scripts
 
-- `scripts/claim_issue.py` — CLI/local fallback for atomically claiming an issue via `codex/issue-N`; do not use it in ChatGPT for remote GitHub operations.
+- `scripts/claim_issue.py` — authenticated `gh` fallback for atomically claiming an issue via `codex/issue-N`; use it whenever the native GitHub interface is unavailable or insufficient.
 - `scripts/create_worktree.py` — create/locate the mandatory dedicated worktree.
-- `scripts/release_issue.py` — CLI/local fallback for safely releasing an abandoned claim; do not use it in ChatGPT for remote GitHub operations.
+- `scripts/release_issue.py` — authenticated `gh` fallback for safely releasing an abandoned claim; use it whenever the native GitHub interface is unavailable or insufficient.

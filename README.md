@@ -52,6 +52,10 @@ issue-followup/
   agents/openai.yaml
 ~~~
 
+## GitHub access fallback
+
+The skills prefer a runtime-native GitHub connector when it is actually exposed and sufficient. If that connector is missing or cannot perform the required authenticated repository operation, they fall back to authenticated `gh` — including inside ChatGPT/Codex runtimes. They must not substitute public web search or unauthenticated `curl` calls for private GitHub access.
+
 ## Local install
 
 The simplest installation is to clone this repository directly as your Codex user skills directory:
