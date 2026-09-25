@@ -225,3 +225,13 @@ Report one of these terminal states:
 - `IN PROGRESS: BLOCKED` — claim retained because work cannot safely complete; blocker posted.
 - `RELEASED` — claim was invalidated before meaningful work; `status:needs-followup` restored.
 - `NO ELIGIBLE ISSUE` — no unclaimed actionable `status:needs-followup` issue with one unambiguous existing PR.
+
+## Deterministic policy helper
+
+Use `scripts/followup_policy.py` as the deterministic reference for follow-up eligibility, exact claim-state transitions, existing-PR requirements, environment-remediation precedence, concurrent-head invalidation, and handoff gating. Repository rules remain authoritative when stricter.
+
+After changing follow-up lifecycle behavior, run:
+
+```bash
+python3 -m unittest discover -s issue-followup/scripts -p "test_*.py" -v
+```
