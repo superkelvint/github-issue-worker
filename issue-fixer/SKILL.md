@@ -1,6 +1,6 @@
 ---
 name: issue-fixer
-description: Drive a specific or already-selected GitHub issue end-to-end from diagnosis to verified closure. Use when the user says to fix, resolve, finish, move forward, or close a named issue, or explicitly invokes the issue fixer and expects more than an issue-to-PR handoff. Inspect current issue/PR/CI state, reproduce defects, implement the smallest correct fix, verify exact-head behavior, perform adversarial falsification, run an architecture audit when blast radius warrants it, merge when justified, and reconcile post-merge state. For unspecified issue selection and claim-to-PR work, use the issue worker first. Do not use for review-only or reconcile-only requests where implementation should not be attempted.
+description: Drive a specific or already-selected GitHub issue end-to-end from diagnosis to verified closure. Use when the user says to fix, resolve, finish, move forward, or close a named issue, or explicitly invokes the issue fixer and expects more than an issue-to-PR handoff. Batch current issue/PR/CI state acquisition, reproduce defects, implement the smallest correct fix, verify exact-head behavior, perform adversarial falsification, run an architecture audit when blast radius warrants it, merge when justified, and reconcile post-merge state. For unspecified issue selection and claim-to-PR work, use the issue worker first. Do not use for review-only or reconcile-only requests where implementation should not be attempted.
 ---
 
 # Issue Fixer
@@ -16,6 +16,19 @@ understand -> establish failing condition -> fix -> verify -> falsify -> archite
 Treat an issue as a bounded review unit, but treat the underlying architectural invariant as the unit of correctness.
 
 This skill complements, rather than replaces, the queue-oriented issue worker. Use the issue worker to discover/select/claim unspecified work and hand off a PR; use issue-fixer when a concrete issue is already identified and the requested endpoint is actual verified closure.
+
+## Execution model: minimize GitHub round trips
+
+Treat the issue, implementing PR, exact head SHA, review state, and CI state as one lifecycle snapshot rather than rediscovering them step by step.
+
+- Batch independent GitHub reads in the same Code Mode call whenever the runtime permits it: current authorities, issue + comments, candidate PRs, PR metadata/diff/comments, exact head SHA, and check/workflow status.
+- Carry forward stable identifiers from that snapshot (issue number, PR number, branch, head SHA, workflow/job IDs). Do not repeatedly search for or re-fetch unchanged objects just to recover identifiers already known.
+- Re-read remote state only at meaningful invalidation boundaries: after a push/rebase/merge-base update, after a review/label/state mutation, when CI finishes or changes, immediately before merge, and immediately after merge for reconciliation.
+- When a PR head changes, invalidate only evidence tied to the old SHA; preserve issue context and other still-current state.
+- Prefer one targeted status/check query over polling multiple overlapping endpoints. Fetch job logs only for failed jobs that are material to diagnosis.
+- Coalesce compatible writes and comments when safe, but never trade away exact-head verification, review gates, or merge safety merely to reduce calls.
+
+This batching rule is an efficiency requirement, not a correctness shortcut.
 
 ## 1. Load current authorities first
 
