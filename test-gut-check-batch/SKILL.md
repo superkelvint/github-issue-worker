@@ -1,17 +1,39 @@
 ---
 name: test-gut-check-batch
-description: Audit test coverage across every open GitHub pull request in a repository as a batch job. Use when asked to gut-check all open PRs, audit the whole PR fleet for missing tests, determine which open PRs are under-tested, batch-review issue test coverage, or improve test coverage across pending PRs. Inventory concrete tests per PR, map them to linked issue acceptance criteria and blast radius, challenge false-green coverage, repair bounded gaps on writable PR branches, verify exact heads, and record SHA-bound dispositions without merging PRs.
+description: Audit test coverage across a selectable GitHub pull-request fleet as a batch job. Use for all open PRs by default, or with a scope argument such as `closed:72h` to audit PRs closed within a rolling lookback window. Inventory concrete tests per PR, map them to acceptance criteria and blast radius, challenge false-green coverage, repair bounded gaps safely, verify exact evidence, and record durable dispositions without merging the audited PRs.
 ---
 
 # Batch Test Gut Check
 
-Audit the complete open-PR fleet for test adequacy. Treat each PR independently, but optimize discovery and evidence gathering as one batch operation.
+Audit a selected PR fleet for test adequacy. Treat each PR independently, but optimize discovery and evidence gathering as one batch operation.
 
 This skill is the fleet form of `$test-gut-check`. It must not reduce the review to CI status, changed test-file count, or line coverage.
 
+## Scope argument
+
+Accept one optional scope argument:
+
+```text
+$test-gut-check-batch
+$test-gut-check-batch open
+$test-gut-check-batch closed
+$test-gut-check-batch closed:72h
+$test-gut-check-batch closed:3d
+```
+
+Interpret it as follows:
+
+- omitted or `open` -> audit every currently open PR; preserve the historical behavior of this skill;
+- `closed` -> audit PRs whose `closed_at` falls within the last 72 hours;
+- `closed:<N>h` or `closed:<N>d` -> audit PRs closed within that rolling lookback window.
+
+Reject ambiguous or malformed scope arguments instead of guessing. Use `scripts/batch_gut_check_policy.py` as the deterministic parser and candidate selector.
+
+For closed scope, include both merged and closed-without-merge PRs in the inventory. Audit merged PRs against the behavior that actually landed on the current default branch. Classify closed-without-merge PRs as `NOT_LANDED`; do not spend test-remediation effort on code that never landed unless the same behavior landed through another PR.
+
 ## Objective
 
-For every open PR:
+For every PR in the selected scope:
 
 1. identify the exact current head and linked issue/acceptance scope;
 2. inventory tests added or changed by the PR;
@@ -44,7 +66,7 @@ Prefer the runtime's authenticated GitHub connector. Fall back to authenticated 
 
 Use Code Mode to batch independent GitHub reads:
 
-- list all open PRs once;
+- list the PR population required by the selected scope once; do not discover candidates one PR at a time;
 - fetch cheap metadata, changed filenames, labels, linked issue clues, comments, and exact heads in parallel;
 - fetch full diffs only for PRs that need auditing;
 - fetch source/test files only for the affected paths;
@@ -52,27 +74,50 @@ Use Code Mode to batch independent GitHub reads:
 
 Do not make one conversational tool round trip for every metadata field of every PR.
 
-## Scope: all open PRs
+## Scope selection and classification
+
+Resolve the scope argument before expensive GitHub reads.
+
+### Open scope
 
 Include every open PR, draft or ready, unless repository rules explicitly exclude a class of PRs from review.
 
-Classify each PR as one of:
+### Closed scope
+
+Select PRs by the GitHub `closed_at` timestamp using the requested rolling lookback. Do not substitute merge time, update time, issue-close time, local commit time, or a calendar-day approximation.
+
+For a merged PR:
+
+- inspect its original implementation delta and linked acceptance scope;
+- verify the landed behavior against current default-branch code/tests;
+- treat the original closed PR head as immutable lineage evidence, not as a branch to edit.
+
+For a closed-without-merge PR:
+
+- classify it `NOT_LANDED`;
+- record why no landed test remediation is required;
+- if equivalent behavior later landed through another PR, audit that landed lineage instead.
+
+Classify each selected PR as one of:
 
 ```text
 AUDIT
-    substantive change requiring a test gut check
+    substantive landed/open change requiring a test gut check
+
+NOT_LANDED
+    closed PR whose implementation did not merge and is not otherwise landed
 
 N/A
     docs/formatting/mechanical change where runtime test coverage is genuinely not applicable
 
 ACTIVE
-    head is moving or another worker is actively changing the branch; defer mutation but still report current evidence
+    open-scope head is moving or another worker is actively changing the branch; defer mutation but still report current evidence
 
 BLOCKED
     required source, permissions, environment, or oracle is genuinely unavailable
 ```
 
-Do not silently skip draft PRs, red PRs, or PRs without a linked issue.
+Do not silently skip draft PRs, red PRs, recently closed PRs, or PRs without a linked issue when they are in the selected scope.
 
 When no linked issue exists, derive the acceptance scope from the PR body, changed behavior, contracts, and review comments. State that the PR has no linked issue rather than inventing one.
 
@@ -84,7 +129,7 @@ Use a durable PR comment marker so repeated batch runs can skip unchanged heads:
 <!-- test-gut-check-batch -->
 TEST GUT CHECK
 head_sha: <40-char SHA>
-disposition: SUFFICIENT | GAPS_RECTIFIED | GAPS_REMAIN | N/A | BLOCKED
+disposition: SUFFICIENT | GAPS_RECTIFIED | GAPS_REMAIN | N/A | NOT_LANDED | BLOCKED
 scope: <linked issue or concise acceptance scope>
 reviewed_at: <timestamp if available>
 ```
@@ -100,7 +145,7 @@ Below the marker include a concise summary of:
 
 On a later batch run:
 
-- if a current marker exists for the exact head with `SUFFICIENT`, `GAPS_RECTIFIED`, or `N/A`, skip re-auditing that PR unless the user explicitly requests a fresh pass;
+- if a current marker exists for the exact immutable/open head with `SUFFICIENT`, `GAPS_RECTIFIED`, `N/A`, or `NOT_LANDED`, skip re-auditing that PR unless the user explicitly requests a fresh pass;
 - if the head moved, the old record is stale and must not be treated as current evidence;
 - if the prior disposition was `GAPS_REMAIN` or `BLOCKED`, re-check whether the blocker/gap is now actionable.
 
@@ -108,7 +153,7 @@ Do not use a plain label as the sole cache because labels are not SHA-bound.
 
 ## Stage 1 — Build the fleet snapshot
 
-For each open PR collect, where available:
+For each PR in the selected scope collect, where available:
 
 - number, title, URL;
 - draft/ready state;
@@ -119,7 +164,8 @@ For each open PR collect, where available:
 - changed filenames;
 - current CI/check summary;
 - current or stale test-gut-check marker;
-- mergeability only as context, not as a test-quality signal.
+- mergeability only as context, not as a test-quality signal;
+- for closed scope: `closed_at`, merged/unmerged state, merge commit when present, and the current default-branch head used for landed-behavior verification.
 
 First decide which PRs are unchanged and already covered by a current exact-head marker. Skip their expensive audit work.
 
@@ -228,7 +274,7 @@ BLOCKED
 
 Record the evidence and continue.
 
-### If `GAPS_FOUND` and the branch is safely writable
+### If `GAPS_FOUND` in open scope and the branch is safely writable
 
 Repair the current PR rather than merely reporting the gap:
 
@@ -246,6 +292,23 @@ Repair the current PR rather than merely reporting the gap:
 
 Never force-push.
 
+### If `GAPS_FOUND` in closed scope
+
+Never mutate a closed PR branch as the remediation target.
+
+For a merged PR:
+
+1. reproduce the missing coverage against current default branch;
+2. create an isolated task branch/worktree from the current default-branch head;
+3. add the smallest missing regression/coverage test;
+4. if the test exposes a product defect, prove the intended pre-fix failure first;
+5. implement the smallest correct fix;
+6. run focused and repository-required verification;
+7. open a focused follow-up PR referencing the audited closed PR and linked issue;
+8. record the follow-up PR and exact verification head in the durable audit comment.
+
+For a `NOT_LANDED` PR, do not create a follow-up merely to test abandoned code.
+
 ### If `GAPS_FOUND` but remediation is too broad
 
 Do not silently expand the PR into another project. Create or route a focused follow-up according to repository workflow and record `GAPS_REMAIN` with the exact missing tests/behavior.
@@ -256,12 +319,14 @@ Do not create a replacement PR without repository/user authority. Record actiona
 
 ## Concurrency handling
 
-Before any mutation and again before push/comment disposition:
+Before any open-PR mutation and again before push/comment disposition:
 
 - re-read the PR head SHA;
 - if it changed, prior exact-head conclusions are stale;
 - restart the audit from the new head once when practical;
 - if the head continues moving, classify `ACTIVE`, do not race the other worker, and continue to the next PR.
+
+For closed scope, the audited PR head is immutable. Before creating a follow-up repair, re-read the current default-branch head and base the repair on that current landed state.
 
 A batch job must favor forward progress without trampling active work.
 
@@ -294,7 +359,7 @@ Do not merge or approve PRs. This skill audits and repairs test coverage only.
 
 ## Batch completion
 
-After processing all open PRs, re-fetch heads for any PRs mutated during the run and ensure each final disposition is tied to the current remote head.
+After processing every PR in the selected scope, re-fetch heads for any open PRs mutated during the run. For closed-scope repairs, verify the exact follow-up PR head and retain the original closed PR head as lineage evidence.
 
 Produce a compact fleet report:
 
@@ -330,7 +395,7 @@ Do not dump every test name into the fleet summary when many PRs exist. Put deta
 
 The batch job is complete only after:
 
-- every open PR has been classified;
+- every PR in the selected scope has been classified;
 - every substantive PR needing an audit has either current exact-head coverage evidence or an explicit blocker/gap;
 - bounded actionable gaps have been rectified where safe;
 - newly exposed bugs were fixed regression-first;
@@ -342,7 +407,7 @@ Green CI alone is never a sufficient test-coverage disposition.
 
 ## Deterministic policy helper
 
-Use `scripts/batch_gut_check_policy.py` as the deterministic reference for exact-head marker parsing, current-vs-stale audit caching, ACTIVE/BLOCKED/N/A/AUDIT classification, safe mutation eligibility, and continuing the fleet after blocked PRs.
+Use `scripts/batch_gut_check_policy.py` as the deterministic reference for scope parsing, rolling closed-window candidate selection, exact-head marker parsing, current-vs-stale audit caching, ACTIVE/BLOCKED/N/A/NOT_LANDED/AUDIT classification, safe mutation eligibility, and continuing the fleet after blocked PRs.
 
 After changing batch gut-check policy, run:
 
