@@ -79,6 +79,10 @@ ci-fixer/
   SKILL.md
   agents/openai.yaml
   references/searchkernel-patterns.md
+pr-auto/
+  SKILL.md
+  agents/openai.yaml
+  references/searchkernel.md
 ~~~
 
 ## GitHub access fallback
@@ -101,6 +105,7 @@ That produces the discovery layout directly:
   verify/SKILL.md
   issue-followup/SKILL.md
   ci-fixer/SKILL.md
+  pr-auto/SKILL.md
 ~~~
 
 Then restart Codex if the skills do not appear immediately.
