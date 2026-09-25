@@ -355,4 +355,8 @@ After changing the issue helper scripts or their workflow invariants, run:
 
 ```bash
 python3 -m unittest discover -s issue/scripts -p "test_*.py" -v
-```
+```\n\n## Shared closure control-plane
+
+Before handoff or termination, normalize the current issue/PR state and evaluate `scripts/control_plane_policy.py issue`. The issue worker still owns claiming, implementation, test-first repair, verification, and review handoff; the shared helper owns the exact-head and terminality semantics used by the other GitHub workflows.
+
+If `HANDOFF` is returned as an owned action, perform the handoff before stopping. If only merge/review actions outside this worker's authority remain, that is an explicit handoff boundary rather than accidental premature termination.\n
