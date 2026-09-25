@@ -1,0 +1,3 @@
+interface:
+  display_name: "Architecture Audit"
+  short_description: "Evidence-based subsystem and repository architecture audits"
