@@ -346,3 +346,13 @@ If the label transition fails, preserve the branch claim. Do not create a false 
 - `scripts/claim_issue.py` — atomic branch claim plus mandatory `status:ready -> status:in-progress` transition.
 - `scripts/create_worktree.py` — create/locate the mandatory dedicated issue worktree.
 - `scripts/release_issue.py` — safely transition `status:in-progress` to ready/blocked/follow-up and release the branch.
+
+## Skill regression tests
+
+The bundled issue helpers are covered by `scripts/test_issue_helpers.py`. The tests defend queue ordering, canonical ready-label filtering, claim-race behavior, claim rollback, dedicated-worktree safety, and release ordering/rollback.
+
+After changing the issue helper scripts or their workflow invariants, run:
+
+```bash
+python3 -m unittest discover -s issue/scripts -p "test_*.py" -v
+```
