@@ -14,6 +14,8 @@ import re
 from dataclasses import dataclass
 from typing import Any, Iterable, Mapping
 
+import control_plane_policy as cp
+
 HIGH_RISK_DOMAINS = {
     "lifecycle", "concurrency", "portable-semantics", "canonical-semantics",
     "schema-fidelity", "persistence", "reopen", "result-fidelity",
