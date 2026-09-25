@@ -3,6 +3,8 @@ from __future__ import annotations
 
 from typing import Any, Iterable, Mapping
 
+import control_plane_policy as cp
+
 FAIL_STATES = {"failure", "failed", "timed_out", "action_required", "cancelled"}
 
 
