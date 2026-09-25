@@ -30,7 +30,7 @@ def completion_allowed(ctx: Mapping[str, Any]) -> bool:
         return False
     if remediation_required(ctx) and not bool(ctx.get("gaps_rectified")):
         return False
-    if regression_first_required(ctx) and not bool(ctx.get("prefx_failure_observed")):
+    if regression_first_required(ctx) and not bool(ctx.get("pre_fix_failure_observed")):
         return False
     return all([
         bool(ctx.get("test_inventory_complete")),
