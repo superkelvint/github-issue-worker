@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - "issue/**"
+      - "issue-fixer/**"
       - "verify/**"
       - "issue-followup/**"
       - "ci-fixer/**"
@@ -21,6 +22,7 @@ on:
       - main
     paths:
       - "issue/**"
+      - "issue-fixer/**"
       - "verify/**"
       - "issue-followup/**"
       - "ci-fixer/**"

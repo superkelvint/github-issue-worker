@@ -1,6 +1,6 @@
 # GitHub Coding Agent Skills
 
-This repository contains nine independent Codex/ChatGPT skills for GitHub engineering workflows.
+This repository contains ten independent Codex/ChatGPT skills for GitHub engineering workflows.
 
 ## $issue
 
@@ -15,6 +15,18 @@ $issue "schema fidelity"
 ~~~
 
 Once $issue successfully claims an issue, it may not terminate with the issue stranded: it must either open/preserve an implementation PR or release the claim. Before handoff it also performs the same test-coverage gut check described below.
+
+## $issue-fixer
+
+Drive a specific or already-selected GitHub issue all the way from diagnosis to verified closure. It establishes the real issue/PR/CI state, reproduces defects test-first, implements the smallest correct repair, performs adversarial false-green review, runs a blast-radius-aware architecture audit when warranted, verifies the exact PR head, merges when repository policy permits, and reconciles post-merge state before calling the issue closed.
+
+~~~text
+$issue-fixer 461
+fix issue 613 end to end
+move #28 all the way to verified closure
+~~~
+
+Use `$issue` when the job is to discover/select/claim unspecified work and hand off a PR. Use `$issue-fixer` when a concrete issue is already identified and the requested endpoint is actual closure rather than PR handoff.
 
 ## $test-gut-check
 
@@ -120,6 +132,10 @@ issue/
   scripts/create_worktree.py
   scripts/release_issue.py
   scripts/test_issue_helpers.py
+issue-fixer/
+  SKILL.md
+  agents/openai.yaml
+  references/review-gates.md
 test-gut-check/
   SKILL.md
   agents/openai.yaml
@@ -207,6 +223,7 @@ That produces the discovery layout directly:
 ~~~text
 ~/.agents/skills/
   issue/SKILL.md
+  issue-fixer/SKILL.md
   test-gut-check/SKILL.md
   test-gut-check-batch/SKILL.md
   coverage-risk/SKILL.md
@@ -219,7 +236,7 @@ That produces the discovery layout directly:
 
 Then restart Codex if the skills do not appear immediately.
 
-Update all nine skills later with:
+Update all ten skills later with:
 
 ~~~bash
 git -C ~/.agents/skills pull
@@ -227,11 +244,12 @@ git -C ~/.agents/skills pull
 
 ### If `~/.agents/skills` already contains other skills
 
-Do not clone over an existing non-empty directory. In that case, keep this repository elsewhere and symlink its nine skill directories:
+Do not clone over an existing non-empty directory. In that case, keep this repository elsewhere and symlink its ten skill directories:
 
 ~~~bash
 git clone https://github.com/superkelvint/github-issue-worker.git ~/.codex/github-issue-worker
 ln -s ~/.codex/github-issue-worker/issue ~/.agents/skills/issue
+ln -s ~/.codex/github-issue-worker/issue-fixer ~/.agents/skills/issue-fixer
 ln -s ~/.codex/github-issue-worker/test-gut-check ~/.agents/skills/test-gut-check
 ln -s ~/.codex/github-issue-worker/test-gut-check-batch ~/.agents/skills/test-gut-check-batch
 ln -s ~/.codex/github-issue-worker/coverage-risk ~/.agents/skills/coverage-risk
