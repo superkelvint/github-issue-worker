@@ -40,7 +40,7 @@ class GutCheckTests(unittest.TestCase):
         self.assertFalse(p.completion_allowed(base(meaningful_gap=True, gaps_rectified=False)))
 
     def test_new_product_bug_requires_observed_prefix_failure(self):
-        self.assertFalse(p.completion_allowed(base(new_test_exposes_product_defect=True, prefx_failure_observed=False)))
+        self.assertFalse(p.completion_allowed(base(new_test_exposes_product_defect=True, pre_fix_failure_observed=False)))
 
     def test_stale_head_cannot_complete(self):
         self.assertFalse(p.completion_allowed(base(verified_head_sha="b" * 40)))
