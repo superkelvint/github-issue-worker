@@ -221,6 +221,17 @@ def merge_eligible(pr: Mapping[str, Any]) -> bool:
     shared["ordinary_review_complete"] = bool(pr.get("ordinary_review_complete", False))
     shared["adversarial_review_required"] = adversarial_review_requirement(pr) != "NONE"
     shared["architecture_audit_required"] = architecture_audit_requirement(pr) != "NONE"
+    shared["merge_evidence_complete"] = all(
+        key in pr
+        for key in (
+            "head_sha",
+            "mergeable",
+            "ci",
+            "required_checks_complete",
+            "issue_acceptance_complete",
+            "ordinary_review_complete",
+        )
+    )
     return cp.merge_eligible(shared)
 
 
