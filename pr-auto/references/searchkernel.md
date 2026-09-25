@@ -15,6 +15,14 @@ Treat these as hypotheses to test, not conclusions:
 - Vespa/native linker/RPATH/ABI/runtime dependency failures -> follow current `BUILDING.md` and native SDK provenance/closure rules.
 - `./dev doctor`, `./dev check`, or `./dev universe` failing before product tests -> treat the harness/tooling defect as first-class rather than bypassing it.
 
+## CTO gut-check anchors
+
+SearchKernel changes that normally deserve full adversarial review include material changes to lifecycle/concurrency, canonical or portable semantics, schema fidelity and presence semantics, persistence/reopen/compatibility, result fidelity/projection, native ABI/lifetime/error propagation, protocol behavior, architecture boundaries or semantic ownership, and frozen acceptance/verifier behavior.
+
+A prior full adversarial review does not automatically require another full audit after every push. Re-run the full review when the post-review delta changes those high-risk surfaces or materially invalidates the earlier reasoning. Prefer a targeted delta review for narrow tests/docs/mechanical repairs, then record the new exact head.
+
+If the user explicitly asks to adversarially review again, perform it again. If the user explicitly wants an immediate merge, do not invent optional extra audit work for low-risk changes, but do not waive a genuinely required review.
+
 ## SearchKernel adversarial-review focus
 
 Scale by blast radius. Common falsification targets include:
@@ -45,4 +53,4 @@ scope: result projection fidelity and alternate ingress
 reviewed_at: 2026-09-25T12:00:00Z
 ```
 
-If a later commit changes the head, the marker is stale until the new head is reviewed.
+If a later commit changes the head, the old marker is stale for exact-head merge evidence. Apply the CTO gut check to decide whether the new head needs a full or delta adversarial review.

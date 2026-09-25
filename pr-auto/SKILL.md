@@ -1,6 +1,6 @@
 ---
 name: pr-auto
-description: Autonomously manage a GitHub pull-request fleet as a fix-forward control loop with minimal conversational tool churn. Use when the user says "pr auto", asks for a PR status update, says "check again", "move every PR forward", "review and merge the green ones", "get the open PRs moving", or otherwise wants open PRs advanced rather than merely summarized. Batch GitHub reads through Code Mode, repair bounded CI/code/conflict problems when possible, review/merge when repository rules permit, track adversarial-review evidence by exact head SHA, reconcile after changes, and continue until no safe forward action remains.
+description: Autonomously manage a GitHub pull-request fleet as a fix-forward control loop with minimal conversational tool churn. Use when the user says "pr auto", asks for a PR status update, says "check again", "move every PR forward", "review and merge the green ones", "get the open PRs moving", or otherwise wants open PRs advanced rather than merely summarized. Batch GitHub reads through Code Mode, repair bounded CI/code/conflict problems when possible, apply a blast-radius-aware CTO gut check for adversarial review, track review evidence by exact head SHA, review/merge when repository rules permit, reconcile after changes, and continue until no safe forward action remains.
 ---
 
 # PR Auto
@@ -64,6 +64,26 @@ Use Code Mode (`functions.exec`) to batch independent GitHub connector calls.
 
 The goal is a handful of orchestration calls containing many GitHub API operations, not dozens of conversational tool round trips.
 
+## Deterministic policy helper
+
+Use `scripts/pr_auto_policy.py` for repeatable state-machine decisions after normalizing GitHub evidence. It is deliberately small and deterministic so important PR Auto behavior is testable.
+
+It covers blast-radius classification, exact-head adversarial-review freshness, full vs delta re-review decisions, fix-in-place vs follow-up decisions, merge eligibility, next-action classification, fleet action ordering, fixed-point detection, and read-only vs mutating mode.
+
+Run it on a normalized PR object or array:
+
+```bash
+python3 scripts/pr_auto_policy.py snapshot.json
+```
+
+Run its tests after changing PR Auto policy:
+
+```bash
+python3 scripts/test_pr_auto_policy.py
+```
+
+The helper is a guardrail, not repository authority. Current repository rules and informed CTO/model judgment may override a helper recommendation when evidence demands it; preserve safety and review gates when doing so.
+
 ## SearchKernel live authority
 
 For substantive SearchKernel PR management, review, repair, merge, audit, reconciliation, or CTO work, fetch current live authority before acting:
@@ -101,11 +121,11 @@ Do not fetch every full diff or every CI log during this stage.
 
 ## Stage 2 — Classify every PR
 
-Assign one primary next-action state:
+Normalize the evidence for the policy helper, then assign one primary next-action state:
 
 - `MERGE_NOW` — repository policy is satisfied at the exact current head.
 - `REVIEW_NOW` — ready for reviewer/CTO inspection; deeper review still required.
-- `ADVERSARIAL_REVIEW_REQUIRED` — blast radius requires an adversarial pass and no current-head record exists.
+- `ADVERSARIAL_REVIEW_REQUIRED` — CTO gut check says a full or delta adversarial pass is warranted.
 - `UPDATE_FROM_MAIN` — stale relative to base and current main likely contains prerequisites/fixes.
 - `FIX_CI` — red CI needs diagnosis or repair.
 - `RESOLVE_CONFLICT` — bounded merge conflict blocks progress.
@@ -116,6 +136,40 @@ Assign one primary next-action state:
 - `STALE_OR_SUPERSEDED` — PR/issue state appears obsolete and requires evidence-based reconciliation.
 
 Do not stop after classifying. The classification exists to drive action.
+
+## CTO gut check for adversarial review
+
+Do not adversarially review everything. Do not skip it merely because the user is impatient. Apply judgment proportional to blast radius.
+
+### Usually require a full adversarial review
+
+Treat these as strong signals, especially when newly introduced or materially changed:
+
+- lifecycle or concurrency behavior;
+- canonical/portable semantics;
+- schema fidelity or presence-sensitive conversion;
+- persistence, reopen, compatibility, or failure atomicity;
+- result fidelity/projection;
+- native ABI/boundary/lifetime/error propagation;
+- protocol behavior or transport/domain boundary changes;
+- architectural ownership/bypass changes;
+- frozen verifier/contract behavior;
+- broad cross-layer changes where several semantic boundaries move together.
+
+### Usually do not require a heavyweight adversarial review
+
+Normal review is normally enough for docs/comments/formatting, narrow mechanical refactors with unchanged behavior, bounded dependency bookkeeping, narrow client ergonomics that do not alter canonical semantics, and small CI/test-harness plumbing fixes directly proven by focused tests. Escalate if evidence exposes a correctness or architecture risk.
+
+### Re-review after an earlier adversarial review
+
+Tie every adversarial review to the exact reviewed SHA, but do not automatically repeat a full audit after every tiny push.
+
+- Run another **full adversarial review** when the delta changes production semantics, touches a high-risk boundary, broadens architecture/scope, or materially changes the reason the earlier review passed.
+- Run a **delta adversarial review** when the delta is narrow tests/docs/mechanical cleanup or a small bounded repair that does not reopen the original high-risk reasoning. Record the new exact head afterward.
+- If the user explicitly asks for another adversarial review, do it again even when a current-head review already exists.
+- If the user says the equivalent of "just merge it already", treat that as a strong signal not to invent optional extra review. It does not override a genuinely required high-blast-radius review, missing verification, or known blocker.
+
+Spend expensive skepticism where a false green could matter; do not turn trivial PRs into rituals.
 
 ## Stage 3 — Advance the fleet
 
@@ -186,7 +240,7 @@ Only record an adversarial review after the model actually performs the reposito
 
 Treat adversarial review as valid only for the exact reviewed `head_sha`.
 
-A new commit automatically makes the prior review stale, even if the change appears small. A delta re-review may be sufficient when repository policy permits, but the new exact head still needs an explicit current record.
+A new commit makes the old exact-head record stale for merge evidence, but it does not automatically demand another full audit. Use the CTO gut check to choose full re-review versus targeted delta re-review, then record the new exact head.
 
 ### Durable tracking record
 
@@ -303,7 +357,7 @@ Repaired: <count>
   #... <fix + exact new head>
 
 Reviewed: <count>
-  #... <normal/adversarial status>
+  #... <normal/full-adversarial/delta-adversarial status>
 
 Still blocked/waiting: <count>
   #... <first concrete blocker>
