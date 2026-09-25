@@ -15,7 +15,8 @@ Use coverage as a map of what tests execute, not as a quality score. The goal is
    - Record the exact current HEAD.
 2. Obtain coverage for that exact HEAD.
    - Prefer the repository's canonical coverage entry point. In SearchKernel, run `./dev coverage`.
-   - A previously generated report is usable only when its metadata names the exact current HEAD and the test configuration is still applicable.
+   - A previously generated report is reusable only when its metadata names the exact current HEAD, records a clean worktree, and the test configuration is still applicable.
+   - A freshly generated report from a dirty worktree is valid evidence for that current snapshot, but it must not be reused later as pristine exact-head evidence.
    - Do not install or mutate shared toolchains ad hoc when the repository defines an immutable build environment.
 3. Inventory coverage gaps.
    - Run `scripts/coverage_risk.py <summary.json> --root <repo-root>` when the report is cargo-llvm-cov JSON.
@@ -98,7 +99,7 @@ When authorized to improve coverage, make concrete changes rather than returning
 
 Report:
 
-- exact analyzed HEAD;
+- exact analyzed HEAD and worktree cleanliness/source state;
 - coverage command/artifact used and freshness evidence;
 - baseline line/function/region coverage where available;
 - high-risk gaps found, with concrete reasons;
