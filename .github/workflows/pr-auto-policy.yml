@@ -11,6 +11,8 @@ on:
       - "test-gut-check/**"
       - "test-gut-check-batch/**"
       - "coverage-risk/**"
+      - "architecture-audit/**"
+      - "issue-reconcile/**"
       - "cto-reflection/**"
       - "plugins/github-coding-agent-skills/**"
       - ".agents/plugins/marketplace.json"
@@ -28,6 +30,8 @@ on:
       - "test-gut-check/**"
       - "test-gut-check-batch/**"
       - "coverage-risk/**"
+      - "architecture-audit/**"
+      - "issue-reconcile/**"
       - "cto-reflection/**"
       - "plugins/github-coding-agent-skills/**"
       - ".agents/plugins/marketplace.json"
@@ -60,7 +64,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          for dir in issue verify issue-followup ci-fixer pr-auto test-gut-check test-gut-check-batch coverage-risk cto-reflection; do
+          for dir in issue issue-reconcile architecture-audit verify issue-followup ci-fixer pr-auto test-gut-check test-gut-check-batch coverage-risk cto-reflection; do
             echo "==> $dir"
             python3 -m unittest discover -s "$dir/scripts" -p "test_*.py" -v
           done
