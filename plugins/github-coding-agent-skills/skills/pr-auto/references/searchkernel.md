@@ -23,6 +23,12 @@ A prior full adversarial review does not automatically require another full audi
 
 If the user explicitly asks to adversarially review again, perform it again. If the user explicitly wants an immediate merge, do not invent optional extra audit work for low-risk changes, but do not waive a genuinely required review.
 
+## SearchKernel architecture-audit anchors
+
+Use a distinct architecture audit when SearchKernel changes can affect lifecycle/concurrency, canonical or portable semantic ownership, schema/protocol/generated-code fidelity, persistence/reopen compatibility, native/ABI boundaries, result projection/grouping/ranking semantics, daemon/transport/client parity, or CI/verifier selection. Audit the closure cluster across all materially equivalent ingress/execution paths; do not treat a green local diff as proof that the architecture is closed.
+
+Architecture-audit evidence is exact-head SHA-bound just like adversarial-review evidence. After a narrow non-architectural push, a delta audit may be enough; after a semantic/boundary/coverage change, rerun the full architecture audit.
+
 ## SearchKernel adversarial-review focus
 
 Scale by blast radius. Common falsification targets include:
@@ -54,3 +60,17 @@ reviewed_at: 2026-09-25T12:00:00Z
 ```
 
 If a later commit changes the head, the old marker is stale for exact-head merge evidence. Apply the CTO gut check to decide whether the new head needs a full or delta adversarial review.
+
+
+## Architecture audit marker example
+
+```text
+<!-- pr-auto:architecture-audit -->
+PR-AUTO ARCHITECTURE AUDIT
+head_sha: 0123456789abcdef0123456789abcdef01234567
+disposition: VERIFIED
+scope: canonical query ingress, protocol decode, client parity, and verification ownership
+reviewed_at: 2026-09-25T12:05:00Z
+```
+
+Do not merge an architecture-sensitive PR on a stale audit marker. Use the current delta to decide whether a full or delta architecture re-audit is required, then record the new exact head.
