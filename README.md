@@ -1,6 +1,6 @@
 # GitHub Coding Agent Skills
 
-This repository contains nine independent Codex/ChatGPT skills for GitHub engineering workflows.
+This repository contains ten independent Codex/ChatGPT skills for GitHub engineering workflows.
 
 ## $issue
 
@@ -97,6 +97,19 @@ $pr-auto 584
 
 A bare `pr auto` is intentionally action-oriented. Use `pr auto status` for a read-only snapshot. PR Auto's deterministic policy helper is covered by `python3 pr-auto/scripts/test_pr_auto_policy.py`.
 
+
+## $architecture-audit
+
+Run a systematic evidence-based architecture/correctness audit of SearchKernel or a named subsystem. It loads the live modular audit checklist, traces the complete execution path across adjacent boundaries, challenges false-green tests/verifiers, checks upstream/oracle behavior when required, and files deduplicated actionable issues with explicit verification-resolution plans.
+
+~~~text
+$architecture-audit searchkerneld
+architecture audit the IR-to-Vespa lowering path
+systematically audit SearchKernel for architectural smells and correctness bugs
+~~~
+
+It is deliberately different from PR review: it audits the subsystem/repository at an exact revision, creates durable findings, and leaves normal issue implementation to `$issue` unless the user explicitly asks to fix findings during the audit.
+
 ## $cto-reflection
 
 Review recent SearchKernel/CTO conversations, normally the last 24 hours, and turn repeated friction into concrete process improvements. It refreshes the current CTO workflow and repository rules, inspects relevant skills, distinguishes tooling/workflow/skill/user-habit root causes, and challenges proposed shortcuts for false-green risk.
@@ -158,6 +171,12 @@ pr-auto/
   scripts/pr_auto_policy.py
   scripts/test_pr_auto_policy.py
   references/searchkernel.md
+architecture-audit/
+  SKILL.md
+  agents/openai.yaml
+  references/searchkernel.md
+  scripts/audit_scope.py
+  scripts/test_audit_scope.py
 cto-reflection/
   SKILL.md
   agents/openai.yaml
@@ -214,12 +233,13 @@ That produces the discovery layout directly:
   issue-followup/SKILL.md
   ci-fixer/SKILL.md
   pr-auto/SKILL.md
+  architecture-audit/SKILL.md
   cto-reflection/SKILL.md
 ~~~
 
 Then restart Codex if the skills do not appear immediately.
 
-Update all nine skills later with:
+Update all ten skills later with:
 
 ~~~bash
 git -C ~/.agents/skills pull
@@ -227,7 +247,7 @@ git -C ~/.agents/skills pull
 
 ### If `~/.agents/skills` already contains other skills
 
-Do not clone over an existing non-empty directory. In that case, keep this repository elsewhere and symlink its nine skill directories:
+Do not clone over an existing non-empty directory. In that case, keep this repository elsewhere and symlink its ten skill directories:
 
 ~~~bash
 git clone https://github.com/superkelvint/github-issue-worker.git ~/.codex/github-issue-worker
@@ -239,6 +259,7 @@ ln -s ~/.codex/github-issue-worker/verify ~/.agents/skills/verify
 ln -s ~/.codex/github-issue-worker/issue-followup ~/.agents/skills/issue-followup
 ln -s ~/.codex/github-issue-worker/ci-fixer ~/.agents/skills/ci-fixer
 ln -s ~/.codex/github-issue-worker/pr-auto ~/.agents/skills/pr-auto
+ln -s ~/.codex/github-issue-worker/architecture-audit ~/.agents/skills/architecture-audit
 ln -s ~/.codex/github-issue-worker/cto-reflection ~/.agents/skills/cto-reflection
 ~~~
 
@@ -250,9 +271,9 @@ If you previously installed an older copy of any of these skills, remove that ol
 The repository's deterministic skill helpers are covered with standard-library Python unit tests. Run the full suite with:
 
 ~~~bash
-for dir in issue verify issue-followup ci-fixer pr-auto test-gut-check test-gut-check-batch coverage-risk cto-reflection; do
+for dir in issue verify issue-followup ci-fixer pr-auto test-gut-check test-gut-check-batch coverage-risk architecture-audit cto-reflection; do
   python3 -m unittest discover -s "$dir/scripts" -p 'test_*.py' -v
 done
 ~~~
 
-The suite currently covers issue queue/claim/worktree/release safety, draft PR verification, follow-up lifecycle, CI diagnosis/repair policy, PR Auto fleet policy, test gut-check policy, batch audit caching/mutation rules, coverage-risk inventory parsing, and CTO reflection recommendation guards.
+The suite currently covers issue queue/claim/worktree/release safety, draft PR verification, follow-up lifecycle, CI diagnosis/repair policy, PR Auto fleet policy, test gut-check policy, batch audit caching/mutation rules, coverage-risk inventory parsing, architecture-audit live-scope routing/fallback behavior, and CTO reflection recommendation guards.
