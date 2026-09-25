@@ -12,6 +12,8 @@ ROOT = Path(__file__).resolve().parents[1]
 PLUGIN_SKILLS = ROOT / "plugins" / "github-coding-agent-skills" / "skills"
 IGNORED_NAMES = {"__pycache__", ".DS_Store"}
 IGNORED_SUFFIXES = {".pyc", ".pyo"}
+SHARED_CONTROL_PLANE = ROOT / "tools" / "control_plane_policy.py"
+SHARED_CONTROL_PLANE_TARGETS = ("ci-fixer", "issue", "issue-fixer", "issue-followup", "pr-auto")
 
 
 def discover_skills() -> list[Path]:
@@ -69,7 +71,7 @@ def check() -> bool:
         if path.is_dir()
     ) if PLUGIN_SKILLS.is_dir() else []
 
-    ok = expected_names == actual_names
+    ok = check_control_plane_copies() and expected_names == actual_names
     if not ok:
         print(
             "marketplace skill set drift: "
