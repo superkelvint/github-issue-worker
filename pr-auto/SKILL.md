@@ -1,6 +1,6 @@
 ---
 name: pr-auto
-description: Autonomously manage a GitHub pull-request fleet as a fix-forward control loop with minimal conversational tool churn. Use when the user says "pr auto", asks for a PR status update, says "check again", "move every PR forward", "review and merge the green ones", "get the open PRs moving", or otherwise wants open PRs advanced rather than merely summarized. Batch GitHub reads through Code Mode, repair bounded CI/code/conflict problems when possible, apply a blast-radius-aware CTO gut check for adversarial review, track review evidence by exact head SHA, review/merge when repository rules permit, reconcile after changes, and continue until no safe forward action remains.
+description: Autonomously manage a GitHub pull-request fleet as a fix-forward control loop with minimal conversational tool churn. Use when the user says "pr auto", asks for a PR status update, says "check again", "move every PR forward", "review and merge the green ones", "get the open PRs moving", or otherwise wants open PRs advanced rather than merely summarized. Batch GitHub reads through Code Mode, repair bounded CI/code/conflict problems when possible, apply blast-radius-aware adversarial-review and architecture-audit gates, track both by exact head SHA, review/merge when repository rules permit, reconcile after changes, and continue until no safe forward action remains.
 ---
 
 # PR Auto
@@ -68,7 +68,7 @@ The goal is a handful of orchestration calls containing many GitHub API operatio
 
 Use `scripts/pr_auto_policy.py` for repeatable state-machine decisions after normalizing GitHub evidence. It is deliberately small and deterministic so important PR Auto behavior is testable.
 
-It covers blast-radius classification, exact-head adversarial-review freshness, full vs delta re-review decisions, fix-in-place vs follow-up decisions, merge eligibility, next-action classification, fleet action ordering, fixed-point detection, and read-only vs mutating mode.
+It covers blast-radius classification, exact-head adversarial-review freshness, exact-head architecture-audit freshness, full vs delta re-review/audit decisions, fix-in-place vs follow-up decisions, merge eligibility, next-action classification, fleet action ordering, fixed-point detection, and read-only vs mutating mode.
 
 Run it on a normalized PR object or array:
 
@@ -95,7 +95,7 @@ For substantive SearchKernel PR management, review, repair, merge, audit, reconc
 
 Batch these reads where possible. Follow current repository state rather than bundled memory.
 
-For SearchKernel-specific heuristics and review tracking, read `references/searchkernel.md` when relevant.
+For SearchKernel-specific heuristics and review tracking, read `references/searchkernel.md` when relevant. For architecture-audit trigger and closure-cluster guidance, read `references/architecture-audit.md` whenever an architecture audit is required.
 
 ## Stage 1 — Build one fleet snapshot
 
@@ -115,7 +115,8 @@ For every PR, gather cheap evidence in parallel and normalize it into a compact 
 - exact-head workflow runs;
 - behind/ahead divergence from current base branch;
 - unresolved review/follow-up state;
-- adversarial-review record for the exact head, if any.
+- adversarial-review record for the exact head, if any;
+- architecture-audit record for the exact head, if any.
 
 Do not fetch every full diff or every CI log during this stage.
 
@@ -126,6 +127,7 @@ Normalize the evidence for the policy helper, then assign one primary next-actio
 - `MERGE_NOW` — repository policy is satisfied at the exact current head.
 - `REVIEW_NOW` — ready for reviewer/CTO inspection; deeper review still required.
 - `ADVERSARIAL_REVIEW_REQUIRED` — CTO gut check says a full or delta adversarial pass is warranted.
+- `ARCHITECTURE_AUDIT_REQUIRED` — the change can affect a cross-layer architectural invariant and the required full or delta audit is not current for the exact head.
 - `UPDATE_FROM_MAIN` — stale relative to base and current main likely contains prerequisites/fixes.
 - `FIX_CI` — red CI needs diagnosis or repair.
 - `RESOLVE_CONFLICT` — bounded merge conflict blocks progress.
@@ -194,6 +196,65 @@ A substantive review record should summarize:
 
 For trivial docs/formatting/mechanical changes where runtime test coverage is genuinely not applicable, record that explicitly rather than inventing tests.
 
+## Architecture audit gate
+
+Architecture audit is a distinct merge gate from adversarial review. An adversarial review asks how the implementation or verification could be falsely green; an architecture audit asks whether the **cross-layer invariant is actually closed everywhere it can be bypassed or contradicted**.
+
+Run a full architecture audit when the PR can affect one or more of these areas:
+
+- lifecycle, concurrency, shutdown, ownership, or race behavior;
+- canonical semantics or multiple semantic ingress/execution paths;
+- schema/protocol/API fidelity or generated bindings;
+- persistence format, reopen, compatibility, or migrations;
+- native/FFI/Vespa boundaries, ABI, ownership, or error propagation;
+- result-tree/result-projection fidelity, grouping, sorting, ranking, or response semantics;
+- transport framing, daemon behavior, cancellation, timeout, or cross-client parity;
+- CI selectors/DAGs, acceptance harnesses, verifiers, or other mechanisms that can make verification falsely green;
+- security/trust boundaries or another high-blast-radius architectural invariant.
+
+A PR can require architecture audit even when it does **not** require a heavyweight adversarial review. For example, a bounded transport or CI-selector change may be medium blast radius for implementation review while still changing an architectural coverage boundary.
+
+For a required full audit, inspect the **architectural closure cluster**, not only the PR diff:
+
+1. identify the invariant the PR is supposed to preserve or restore;
+2. enumerate materially equivalent ingress and execution paths;
+3. confirm the canonical path remains singular where required;
+4. inspect alternate clients, adapters, generated surfaces, transports, and helpers that can bypass it;
+5. verify failure behavior and error domains remain consistent across layers;
+6. inspect persistence/reopen and lifecycle consequences when applicable;
+7. compare with the independent source of truth/oracle when semantics depend on one, including pinned Vespa source when required;
+8. ensure docs and capability claims do not exceed executable behavior;
+9. ensure verification ownership/selection actually covers the changed architecture;
+10. identify adjacent open work that means the closure cluster is not actually closed.
+
+Use `references/architecture-audit.md` for the compact audit checklist.
+
+### Architecture re-audit after a head change
+
+Tie architecture-audit evidence to the exact audited `head_sha`.
+
+- Run another **full architecture audit** when the delta touches an architecture-audit trigger, reopens a cross-layer invariant, broadens the closure cluster, or materially invalidates the earlier audit.
+- Run a **delta architecture audit** for narrow tests/docs/mechanical changes that do not reopen the architecture reasoning; verify the previous closure conclusion still holds and record the new exact head.
+- If the user explicitly requests an architecture audit, perform it even when a current-head audit already exists.
+- Merge urgency never waives a required architecture audit.
+
+### Durable architecture-audit record
+
+Prefer a machine-readable PR comment:
+
+```text
+<!-- pr-auto:architecture-audit -->
+PR-AUTO ARCHITECTURE AUDIT
+head_sha: <40-char SHA>
+disposition: NO_BLOCKER_FOUND | CHANGES_REQUIRED | VERIFIED
+scope: <invariant and closure cluster audited>
+reviewed_at: <ISO timestamp if available>
+```
+
+Select the latest record matching the exact current head. Treat a stale-head record as evidence for deciding full versus delta re-audit, never as current merge evidence.
+
+Expose normalized audit state as `CURRENT:NO_BLOCKER_FOUND`, `CURRENT:VERIFIED`, `CURRENT:CHANGES_REQUIRED`, `STALE:<sha>`, `NONE`, or `N/A` when repository policy explicitly makes architecture audit inapplicable.
+
 ## Stage 3 — Advance the fleet
 
 Process all independent safe actions in batches where possible.
@@ -207,8 +268,9 @@ A useful default ordering is:
 5. implement bounded code/test fixes;
 6. review PRs ready for CTO/reviewer action;
 7. perform adversarial reviews where required;
-8. merge newly eligible PRs;
-9. reconcile linked issues and stale PR state.
+8. perform architecture audits where required;
+9. merge newly eligible PRs;
+10. reconcile linked issues and stale PR state.
 
 Ordering may change when one PR unblocks another. Prefer the sequence that maximizes safe forward progress.
 
@@ -251,9 +313,9 @@ Follow repository-specific rules. In repositories requiring regression-test-firs
 
 Escalate to `FOLLOW_UP_REQUIRED` only when the repair is materially broader/separately reviewable, another active worker owns it, verification cannot be obtained, or a genuine decision is required.
 
-## Stage 4 — Review and adversarial-review tracking
+## Stage 4 — Review, adversarial-review, and architecture-audit tracking
 
-Normal review and adversarial review are different.
+Normal review, adversarial review, and architecture audit are distinct gates.
 
 The skill may organize evidence for an adversarial review, but must never claim an adversarial review occurred merely because CI is green, a diff was skimmed, or metadata was collected.
 
@@ -298,6 +360,8 @@ Do not add a generic `adversarial-reviewed` label as the sole source of truth.
 
 If the current repository workflow requires another durable audit ledger in addition to the PR record, update that ledger too.
 
+Apply the same exact-head rule to architecture-audit records. Never infer that architecture audit happened because an adversarial review mentioned architecture; the architecture closure-cluster reasoning must actually have been performed and recorded when the gate applies.
+
 ## Stage 5 — Exact-head verification and merge
 
 Before merging any PR:
@@ -305,7 +369,8 @@ Before merging any PR:
 - re-fetch current PR metadata;
 - verify the expected head has not moved;
 - verify applicable required checks against that exact head;
-- ensure required review/adversarial-review evidence is current;
+- ensure required ordinary-review and adversarial-review evidence is current;
+- ensure required architecture-audit evidence is current for the exact head;
 - reconcile issue acceptance criteria and relevant architecture/contracts;
 - challenge likely false-green modes based on blast radius;
 - use expected-head protection when the merge action supports it.
@@ -382,7 +447,7 @@ Repaired: <count>
   #... <fix + exact new head>
 
 Reviewed: <count>
-  #... <normal/full-adversarial/delta-adversarial status>
+  #... <normal/full-adversarial/delta-adversarial/full-architecture/delta-architecture status>
 
 Still blocked/waiting: <count>
   #... <first concrete blocker>

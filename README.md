@@ -98,7 +98,7 @@ For SearchKernel, $ci-fixer fetches the current CTO workflow and repository agen
 
 ## $pr-auto
 
-Drive the open PR fleet to the furthest safe state it can reach: batch status discovery, update stale branches, fix bounded CI/code/conflict problems, review ready PRs, apply a blast-radius-aware CTO gut check for adversarial review, track that evidence by exact head SHA, merge eligible PRs, reconcile linked issues, then repeat until no additional safe action remains.
+Drive the open PR fleet to the furthest safe state it can reach: batch status discovery, update stale branches, fix bounded CI/code/conflict problems, review ready PRs, apply blast-radius-aware adversarial-review and architecture-audit gates, track both by exact head SHA, merge only after every required gate is current, reconcile linked issues, then repeat until no additional safe action remains.
 
 ~~~text
 $pr-auto

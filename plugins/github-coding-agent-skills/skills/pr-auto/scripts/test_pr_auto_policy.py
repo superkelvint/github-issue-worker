@@ -60,6 +60,20 @@ reviewed_at: 2026-09-25T12:00:00Z
         self.assertEqual(rec.head_sha, HEAD_A)
         self.assertEqual(rec.disposition, "NO_BLOCKER_FOUND")
 
+    def test_parse_architecture_audit_marker(self):
+        text = f"""note
+<!-- pr-auto:architecture-audit -->
+PR-AUTO ARCHITECTURE AUDIT
+head_sha: {HEAD_A}
+disposition: VERIFIED
+scope: canonical ingress closure
+reviewed_at: 2026-09-25T12:05:00Z
+"""
+        rec = p.parse_architecture_audit_comment(text)
+        self.assertIsNotNone(rec)
+        self.assertEqual(rec.head_sha, HEAD_A)
+        self.assertEqual(rec.disposition, "VERIFIED")
+
     def test_bad_marker_is_ignored(self):
         self.assertIsNone(p.parse_review_comment(
             "<!-- pr-auto:adversarial-review -->\nhead_sha: nope\ndisposition: VERIFIED"
@@ -111,6 +125,54 @@ reviewed_at: 2026-09-25T12:00:00Z
         self.assertEqual(p.adversarial_review_requirement(pr), "FULL")
 
 
+class ArchitectureAuditTests(unittest.TestCase):
+    def test_docs_do_not_require_architecture_audit(self):
+        self.assertEqual(p.architecture_audit_requirement(base_pr()), "NONE")
+
+    def test_transport_change_requires_full_architecture_audit(self):
+        self.assertEqual(
+            p.architecture_audit_requirement(base_pr(change_domains=["transport"])),
+            "FULL",
+        )
+
+    def test_current_exact_head_architecture_audit_is_reused(self):
+        pr = base_pr(
+            change_domains=["transport"],
+            architecture_audit={"head_sha": HEAD_A, "disposition": "NO_BLOCKER_FOUND"},
+        )
+        self.assertEqual(p.architecture_audit_requirement(pr), "CURRENT")
+
+    def test_stale_architecture_audit_with_tiny_delta_uses_delta(self):
+        pr = base_pr(
+            head_sha=HEAD_B,
+            change_domains=["transport"],
+            architecture_audit={"head_sha": HEAD_A, "disposition": "VERIFIED"},
+            delta_domains=["tests-only"],
+            delta_file_count=1,
+            delta_changed_lines=4,
+        )
+        self.assertEqual(p.architecture_audit_requirement(pr), "DELTA")
+
+    def test_stale_architecture_audit_with_architectural_delta_requires_full(self):
+        pr = base_pr(
+            head_sha=HEAD_B,
+            change_domains=["transport"],
+            architecture_audit={"head_sha": HEAD_A, "disposition": "VERIFIED"},
+            delta_domains=["client-parity"],
+            delta_file_count=1,
+            delta_changed_lines=4,
+        )
+        self.assertEqual(p.architecture_audit_requirement(pr), "FULL")
+
+    def test_explicit_architecture_request_forces_full_even_on_same_head(self):
+        pr = base_pr(
+            change_domains=["transport"],
+            user_requested_architecture_audit=True,
+            architecture_audit={"head_sha": HEAD_A, "disposition": "VERIFIED"},
+        )
+        self.assertEqual(p.architecture_audit_requirement(pr), "FULL")
+
+
 class FixForwardTests(unittest.TestCase):
     def test_bounded_defect_is_fixed_in_place(self):
         pr = base_pr(implementation_defect=True, bounded_fix=True)
@@ -144,29 +206,47 @@ class MergeGateTests(unittest.TestCase):
         self.assertTrue(p.merge_eligible(pr))
         self.assertEqual(p.classify_pr(pr), "MERGE_NOW")
 
-    def test_high_risk_green_pr_cannot_merge_without_adversarial_review(self):
+    def test_high_risk_green_pr_first_requires_adversarial_review(self):
         pr = base_pr(change_domains=["result-fidelity"])
         self.assertFalse(p.merge_eligible(pr))
         self.assertEqual(p.classify_pr(pr), "ADVERSARIAL_REVIEW_REQUIRED")
 
-    def test_just_merge_urgency_cannot_bypass_high_risk_review(self):
-        pr = base_pr(change_domains=["concurrency"], user_merge_urgency=True)
+    def test_after_adversarial_review_high_risk_pr_requires_architecture_audit(self):
+        pr = base_pr(
+            change_domains=["result-fidelity"],
+            adversarial_review={"head_sha": HEAD_A, "disposition": "NO_BLOCKER_FOUND"},
+        )
         self.assertFalse(p.merge_eligible(pr))
-        self.assertEqual(p.classify_pr(pr), "ADVERSARIAL_REVIEW_REQUIRED")
+        self.assertEqual(p.classify_pr(pr), "ARCHITECTURE_AUDIT_REQUIRED")
 
-    def test_current_exact_head_adversarial_review_unlocks_merge(self):
+    def test_both_exact_head_gates_unlock_merge(self):
         pr = base_pr(
             change_domains=["schema-fidelity"],
             adversarial_review={"head_sha": HEAD_A, "disposition": "NO_BLOCKER_FOUND"},
+            architecture_audit={"head_sha": HEAD_A, "disposition": "VERIFIED"},
         )
         self.assertTrue(p.merge_eligible(pr))
         self.assertEqual(p.classify_pr(pr), "MERGE_NOW")
 
-    def test_old_review_never_unlocks_new_head_directly(self):
+    def test_medium_architecture_domain_requires_audit_without_adversarial(self):
+        pr = base_pr(change_domains=["transport"])
+        self.assertEqual(p.adversarial_review_requirement(pr), "NONE")
+        self.assertFalse(p.merge_eligible(pr))
+        self.assertEqual(p.classify_pr(pr), "ARCHITECTURE_AUDIT_REQUIRED")
+
+    def test_just_merge_urgency_cannot_bypass_either_gate(self):
+        pr = base_pr(change_domains=["concurrency"], user_merge_urgency=True)
+        self.assertFalse(p.merge_eligible(pr))
+        self.assertEqual(p.classify_pr(pr), "ADVERSARIAL_REVIEW_REQUIRED")
+        pr["adversarial_review"] = {"head_sha": HEAD_A, "disposition": "VERIFIED"}
+        self.assertEqual(p.classify_pr(pr), "ARCHITECTURE_AUDIT_REQUIRED")
+
+    def test_old_reviews_never_unlock_new_head_directly(self):
         pr = base_pr(
             head_sha=HEAD_B,
             change_domains=["schema-fidelity"],
             adversarial_review={"head_sha": HEAD_A, "disposition": "NO_BLOCKER_FOUND"},
+            architecture_audit={"head_sha": HEAD_A, "disposition": "VERIFIED"},
             delta_domains=["tests-only"],
         )
         self.assertFalse(p.merge_eligible(pr))
@@ -192,6 +272,22 @@ class FleetLoopTests(unittest.TestCase):
         ]
         plan = p.fleet_plan(fleet)
         self.assertEqual([x["state"] for x in plan], ["MERGE_NOW", "FIX_CI", "WAITING"])
+
+    def test_plan_places_architecture_audit_after_adversarial_review(self):
+        fleet = [
+            base_pr(number=1, change_domains=["transport"]),
+            base_pr(number=2, change_domains=["persistence"]),
+        ]
+        plan = p.fleet_plan(fleet)
+        self.assertEqual(
+            [x["state"] for x in plan],
+            ["ADVERSARIAL_REVIEW_REQUIRED", "ARCHITECTURE_AUDIT_REQUIRED"],
+        )
+
+    def test_evaluation_exposes_both_review_gates(self):
+        result = p.evaluate_pr(base_pr(change_domains=["transport"]))
+        self.assertEqual(result["adversarial_review"], "NONE")
+        self.assertEqual(result["architecture_audit"], "FULL")
 
     def test_fleet_not_at_fixed_point_when_any_safe_action_exists(self):
         self.assertFalse(p.at_fixed_point([base_pr(ci="pending"), base_pr(number=2)]))
