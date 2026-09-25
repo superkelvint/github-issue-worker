@@ -244,3 +244,13 @@ The gut check is complete only when:
 - the final report states what remains untested, if anything.
 
 Do not declare an issue well-tested merely because CI is green.
+
+## Deterministic policy helper
+
+Use `scripts/gut_check_policy.py` as the deterministic reference for coverage disposition, false-green gaps, actionable remediation, regression-first evidence, and exact-head completion. It does not replace the substantive coverage analysis described above.
+
+After changing gut-check completion policy, run:
+
+```bash
+python3 -m unittest discover -s test-gut-check/scripts -p "test_*.py" -v
+```

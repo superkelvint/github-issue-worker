@@ -339,3 +339,13 @@ The batch job is complete only after:
 - the final report identifies every remaining gap, active PR, or blocker.
 
 Green CI alone is never a sufficient test-coverage disposition.
+
+## Deterministic policy helper
+
+Use `scripts/batch_gut_check_policy.py` as the deterministic reference for exact-head marker parsing, current-vs-stale audit caching, ACTIVE/BLOCKED/N/A/AUDIT classification, safe mutation eligibility, and continuing the fleet after blocked PRs.
+
+After changing batch gut-check policy, run:
+
+```bash
+python3 -m unittest discover -s test-gut-check-batch/scripts -p "test_*.py" -v
+```

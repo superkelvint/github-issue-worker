@@ -1,15 +1,29 @@
-name: PR Auto policy tests
+name: Skill policy tests
 
 on:
   pull_request:
     paths:
+      - "issue/**"
+      - "verify/**"
+      - "issue-followup/**"
+      - "ci-fixer/**"
       - "pr-auto/**"
+      - "test-gut-check/**"
+      - "test-gut-check-batch/**"
+      - "cto-reflection/**"
       - ".github/workflows/pr-auto-policy.yml"
   push:
     branches:
       - main
     paths:
+      - "issue/**"
+      - "verify/**"
+      - "issue-followup/**"
+      - "ci-fixer/**"
       - "pr-auto/**"
+      - "test-gut-check/**"
+      - "test-gut-check-batch/**"
+      - "cto-reflection/**"
       - ".github/workflows/pr-auto-policy.yml"
   workflow_dispatch:
 
@@ -18,7 +32,7 @@ permissions:
 
 jobs:
   test:
-    name: Python policy tests
+    name: Python skill tests
     runs-on: ubuntu-latest
     timeout-minutes: 5
 
@@ -31,5 +45,11 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Run PR Auto policy tests
-        run: python3 -m unittest discover -s pr-auto/scripts -p "test_*.py" -v
+      - name: Run all deterministic skill tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          for dir in issue verify issue-followup ci-fixer pr-auto test-gut-check test-gut-check-batch cto-reflection; do
+            echo "==> $dir"
+            python3 -m unittest discover -s "$dir/scripts" -p "test_*.py" -v
+          done

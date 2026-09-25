@@ -282,3 +282,13 @@ Do not give a giant inventory of successful checks unless the user asks.
 - "Why did this workflow lose cargo halfway through?"
 - "Bring all failing PRs up to the main CI fixes."
 - "Fix and merge this once the exact head is green."
+
+## Deterministic policy helper
+
+Use `scripts/ci_fixer_policy.py` as the deterministic reference for failure classification, action-mode boundaries, selective log retrieval, one-shot transient reruns, bounded-repair authorization, exact-head verification, and closure-mode merge gating. It is a guardrail, not a substitute for repository-specific evidence.
+
+After changing CI Fixer policy, run:
+
+```bash
+python3 -m unittest discover -s ci-fixer/scripts -p "test_*.py" -v
+```

@@ -236,3 +236,13 @@ At the end, summarize every draft PR encountered as one of:
 - DRAFT: BLOCKED — verification could not be completed because of permissions, environment, pending required checks, or concurrent changes.
 
 Never report a PR as verified if it remains draft because required verification is incomplete.
+
+## Deterministic policy helper
+
+Use `scripts/verify_policy.py` as the deterministic reference for the draft-only queue, exact-head freshness, required-check state, safe-repair gate, environment-remediation precedence, and ready-for-review eligibility. Repository instructions and real verification evidence remain authoritative when they are stricter.
+
+After changing verifier state-machine behavior, run:
+
+```bash
+python3 -m unittest discover -s verify/scripts -p "test_*.py" -v
+```

@@ -1,6 +1,6 @@
 # GitHub Coding Agent Skills
 
-This repository contains seven independent Codex/ChatGPT skills for GitHub engineering workflows.
+This repository contains eight independent Codex/ChatGPT skills for GitHub engineering workflows.
 
 ## $issue
 
@@ -103,31 +103,48 @@ It prefers the narrowest durable fix: improve an existing skill when that is eno
 issue/
   SKILL.md
   agents/openai.yaml
+  scripts/find_issues.py
   scripts/claim_issue.py
+  scripts/create_worktree.py
   scripts/release_issue.py
+  scripts/test_issue_helpers.py
 test-gut-check/
   SKILL.md
   agents/openai.yaml
+  scripts/gut_check_policy.py
+  scripts/test_gut_check_policy.py
 test-gut-check-batch/
   SKILL.md
   agents/openai.yaml
+  scripts/batch_gut_check_policy.py
+  scripts/test_batch_gut_check_policy.py
 verify/
   SKILL.md
   agents/openai.yaml
+  scripts/verify_policy.py
+  scripts/test_verify_policy.py
 issue-followup/
   SKILL.md
   agents/openai.yaml
+  scripts/followup_policy.py
+  scripts/test_followup_policy.py
 ci-fixer/
   SKILL.md
   agents/openai.yaml
+  scripts/ci_fixer_policy.py
+  scripts/test_ci_fixer_policy.py
   references/searchkernel-patterns.md
 pr-auto/
   SKILL.md
   agents/openai.yaml
+  scripts/pr_auto_policy.py
+  scripts/test_pr_auto_policy.py
   references/searchkernel.md
 cto-reflection/
   SKILL.md
   agents/openai.yaml
+  scripts/reflection_policy.py
+  scripts/test_reflection_policy.py
   references/reflection-rubric.md
   references/report-template.md
 ~~~
@@ -160,7 +177,7 @@ That produces the discovery layout directly:
 
 Then restart Codex if the skills do not appear immediately.
 
-Update all seven skills later with:
+Update all eight skills later with:
 
 ~~~bash
 git -C ~/.agents/skills pull
@@ -168,7 +185,7 @@ git -C ~/.agents/skills pull
 
 ### If `~/.agents/skills` already contains other skills
 
-Do not clone over an existing non-empty directory. In that case, keep this repository elsewhere and symlink its seven skill directories:
+Do not clone over an existing non-empty directory. In that case, keep this repository elsewhere and symlink its eight skill directories:
 
 ~~~bash
 git clone https://github.com/superkelvint/github-issue-worker.git ~/.codex/github-issue-worker
@@ -183,3 +200,16 @@ ln -s ~/.codex/github-issue-worker/cto-reflection ~/.agents/skills/cto-reflectio
 ~~~
 
 If you previously installed an older copy of any of these skills, remove that old copy or symlink first so Codex does not discover duplicate skill names.
+
+
+## Test all skills
+
+The repository's deterministic skill helpers are covered with standard-library Python unit tests. Run the full suite with:
+
+~~~bash
+for dir in issue verify issue-followup ci-fixer pr-auto test-gut-check test-gut-check-batch cto-reflection; do
+  python3 -m unittest discover -s "$dir/scripts" -p 'test_*.py' -v
+done
+~~~
+
+The suite currently covers issue queue/claim/worktree/release safety, draft PR verification, follow-up lifecycle, CI diagnosis/repair policy, PR Auto fleet policy, test gut-check policy, batch audit caching/mutation rules, and CTO reflection recommendation guards.
