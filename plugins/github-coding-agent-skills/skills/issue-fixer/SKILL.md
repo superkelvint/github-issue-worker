@@ -234,4 +234,8 @@ When handing back status, be concise and evidence-based. Include:
 - post-merge reconciliation state;
 - any concrete remaining blocker.
 
-Use workflow confidence terms consistently (`UNVERIFIED`, `BLOCKED`, `NO BLOCKER FOUND`, `VERIFIED`, `CLOSED`) when the current SearchKernel workflow defines them.
+Use workflow confidence terms consistently (`UNVERIFIED`, `BLOCKED`, `NO BLOCKER FOUND`, `VERIFIED`, `CLOSED`) when the current SearchKernel workflow defines them.\n\n## Shared closure control-plane
+
+Use `scripts/control_plane_policy.py issue-fixer` at every meaningful invalidation boundary: after updating from `main`, after a push, after checks or review complete, immediately before merge, and after merge.
+
+The shared helper is authoritative for exact-head evidence freshness, merge eligibility, post-merge reconciliation, and workflow terminality. Issue Fixer continues every returned `owned_action`; it may only call the issue closed when no owned closure action remains. A landed shared fix that affects sibling PRs is exposed as an unowned propagation action for PR Auto rather than silently expanding one issue fix into fleet management.\n

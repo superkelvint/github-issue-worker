@@ -58,12 +58,16 @@ class CiFixerPolicyTests(unittest.TestCase):
         self.assertFalse(p.exact_head_verified({"head_sha": HEAD, "verified_head_sha": "d" * 40, "required_checks_green": True}))
 
     def test_merge_requires_closure_mode_and_exact_head(self):
-        ctx = {"head_sha": HEAD, "verified_head_sha": HEAD, "required_checks_green": True}
+        ctx = {"head_sha": HEAD, "verified_head_sha": HEAD, "required_checks_green": True, "required_review_complete": True, "acceptance_complete": True, "review_blockers_resolved": True}
         self.assertFalse(p.merge_allowed(ctx, "REPAIR"))
         self.assertTrue(p.merge_allowed(ctx, "CLOSURE"))
 
+    def test_missing_merge_evidence_fails_closed(self):
+        ctx = {"head_sha": HEAD, "verified_head_sha": HEAD, "required_checks_green": True}
+        self.assertFalse(p.merge_allowed(ctx, "CLOSURE"))
+
     def test_head_move_after_verify_blocks_merge(self):
-        ctx = {"head_sha": HEAD, "verified_head_sha": HEAD, "required_checks_green": True, "head_moved_after_verify": True}
+        ctx = {"head_sha": HEAD, "verified_head_sha": HEAD, "required_checks_green": True, "required_review_complete": True, "acceptance_complete": True, "review_blockers_resolved": True, "head_moved_after_verify": True}
         self.assertFalse(p.merge_allowed(ctx, "CLOSURE"))
 
 

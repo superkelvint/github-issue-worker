@@ -457,4 +457,10 @@ Fleet fixed point: <yes/no and why>
 
 Omit empty sections. Mention exact SHA where it matters for verification/review identity. Avoid listing every successful check unless requested.
 
-For `pr auto status`, report the same normalized states but perform no writes.
+For `pr auto status`, report the same normalized states but perform no writes.\n\n## Shared closure control-plane
+
+Use `scripts/control_plane_policy.py` as the shared authority for exact-head evidence freshness, merge gating, post-merge reconciliation, propagation of landed shared fixes, and role-scoped terminality.
+
+PR Auto still owns fleet discovery, blast-radius classification, repair ordering, and deciding whether adversarial review or architecture audit is required. After those PR-specific facts are normalized, evaluate the shared policy with role `pr-auto`.
+
+Do not call the fleet a fixed point while `owned_actions` is non-empty. A shared infrastructure/toolchain/CI fix that landed and affects sibling PRs is a `PROPAGATE_SHARED_FIX` action owned by PR Auto, not a reason to stop after the first PR merges.\n

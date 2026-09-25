@@ -3,6 +3,8 @@ from __future__ import annotations
 
 from typing import Any, Iterable, Mapping
 
+import control_plane_policy as cp
+
 FAIL_STATES = {"failure", "failed", "timed_out", "action_required", "cancelled"}
 
 
@@ -62,19 +64,32 @@ def repair_allowed(ctx: Mapping[str, Any], mode: str) -> bool:
 
 
 def exact_head_verified(ctx: Mapping[str, Any]) -> bool:
-    return all([
-        bool(ctx.get("head_sha")),
-        str(ctx.get("head_sha")) == str(ctx.get("verified_head_sha")),
-        bool(ctx.get("required_checks_green")),
-        not bool(ctx.get("head_moved_after_verify")),
-    ])
+    return cp.checks_current_and_green({
+        "head_sha": ctx.get("head_sha"),
+        "checks_head_sha": ctx.get("verified_head_sha"),
+        "required_checks_green": bool(ctx.get("required_checks_green")),
+        "head_moved_after_checks": bool(ctx.get("head_moved_after_verify")),
+    })
 
 
 def merge_allowed(ctx: Mapping[str, Any], mode: str) -> bool:
-    return all([
-        mode == "CLOSURE",
-        exact_head_verified(ctx),
-        bool(ctx.get("review_blockers_resolved", True)),
-        bool(ctx.get("required_review_complete", True)),
-        bool(ctx.get("acceptance_complete", True)),
-    ])
+    if mode != "CLOSURE":
+        return False
+    shared = dict(ctx)
+    shared["checks_head_sha"] = ctx.get("verified_head_sha")
+    shared["head_moved_after_checks"] = bool(ctx.get("head_moved_after_verify"))
+    shared["ordinary_review_complete"] = bool(ctx.get("required_review_complete", True))
+    shared["acceptance_complete"] = bool(ctx.get("acceptance_complete", True))
+    shared["unresolved_review_feedback"] = not bool(ctx.get("review_blockers_resolved", True))
+    shared["merge_evidence_complete"] = all(
+        key in ctx
+        for key in (
+            "head_sha",
+            "verified_head_sha",
+            "required_checks_green",
+            "required_review_complete",
+            "acceptance_complete",
+            "review_blockers_resolved",
+        )
+    )
+    return cp.merge_eligible(shared)

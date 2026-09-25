@@ -16,6 +16,8 @@ on:
       - "plugins/github-coding-agent-skills/**"
       - ".agents/plugins/marketplace.json"
       - "tools/sync_marketplace_plugin.py"
+      - "tools/control_plane_policy.py"
+      - "tools/test_control_plane_policy.py"
       - ".github/workflows/pr-auto-policy.yml"
   push:
     branches:
@@ -34,6 +36,8 @@ on:
       - "plugins/github-coding-agent-skills/**"
       - ".agents/plugins/marketplace.json"
       - "tools/sync_marketplace_plugin.py"
+      - "tools/control_plane_policy.py"
+      - "tools/test_control_plane_policy.py"
       - ".github/workflows/pr-auto-policy.yml"
   workflow_dispatch:
 
@@ -57,6 +61,9 @@ jobs:
 
       - name: Verify ChatGPT marketplace mirror
         run: python3 tools/sync_marketplace_plugin.py --check
+
+      - name: Run shared control-plane policy tests
+        run: python3 tools/test_control_plane_policy.py
 
       - name: Run all deterministic skill tests
         shell: bash
