@@ -50,7 +50,7 @@ For SearchKernel, $ci-fixer fetches the current CTO workflow and repository agen
 
 ## $pr-auto
 
-Drive the open PR fleet to the furthest safe state it can reach: batch status discovery, update stale branches, fix bounded CI/code/conflict problems, review ready PRs, track adversarial-review evidence by exact head SHA, merge eligible PRs, reconcile linked issues, then repeat until no additional safe action remains.
+Drive the open PR fleet to the furthest safe state it can reach: batch status discovery, update stale branches, fix bounded CI/code/conflict problems, review ready PRs, apply a blast-radius-aware CTO gut check for adversarial review, track that evidence by exact head SHA, merge eligible PRs, reconcile linked issues, then repeat until no additional safe action remains.
 
 ~~~text
 $pr-auto
@@ -59,7 +59,7 @@ $pr-auto status
 $pr-auto 584
 ~~~
 
-A bare `pr auto` is intentionally action-oriented. Use `pr auto status` for a read-only snapshot.
+A bare `pr auto` is intentionally action-oriented. Use `pr auto status` for a read-only snapshot. PR Auto's deterministic policy helper is covered by `python3 pr-auto/scripts/test_pr_auto_policy.py`.
 
 ## Layout
 
