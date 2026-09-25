@@ -153,63 +153,41 @@ def latest_architecture_audit_record(comments: Iterable[str]) -> ReviewRecord | 
 
 def adversarial_review_requirement(pr: Mapping[str, Any]) -> str:
     """Return NONE, CURRENT, DELTA, or FULL."""
-    if bool(pr.get("user_requested_adversarial")):
-        return "FULL"
-
-    current_head = str(pr.get("head_sha") or "").lower()
-    prior = pr.get("adversarial_review") or {}
-    prior_head = str(prior.get("head_sha") or "").lower()
-    prior_disposition = str(prior.get("disposition") or "").upper()
-
     requires = bool(pr.get("policy_requires_adversarial")) or blast_radius(pr) == "HIGH"
-    if not requires:
-        return "NONE"
-
-    if prior_head == current_head and prior_disposition in {"NO_BLOCKER_FOUND", "VERIFIED"}:
-        return "CURRENT"
-
-    if not prior_head:
-        return "FULL"
-
-    delta_risk = blast_radius(pr, delta=True)
     delta_domains = _domains(pr, "delta_domains")
-    if delta_risk == "HIGH" or bool(delta_domains & HIGH_RISK_DOMAINS):
-        return "FULL"
-    if bool(pr.get("delta_changes_semantics")):
-        return "FULL"
-    return "DELTA"
+    delta_reopens = (
+        blast_radius(pr, delta=True) == "HIGH"
+        or bool(delta_domains & HIGH_RISK_DOMAINS)
+        or bool(pr.get("delta_changes_semantics"))
+    )
+    return cp.review_requirement(
+        pr,
+        required=requires,
+        evidence_key="adversarial_review",
+        user_requested=bool(pr.get("user_requested_adversarial")),
+        delta_reopens=delta_reopens,
+    )
 
 
 def architecture_audit_requirement(pr: Mapping[str, Any]) -> str:
     """Return NONE, CURRENT, DELTA, or FULL for the architecture-audit gate."""
-    if bool(pr.get("user_requested_architecture_audit")):
-        return "FULL"
-
     domains = _domains(pr)
     requires = bool(pr.get("policy_requires_architecture_audit")) or bool(
         domains & ARCHITECTURE_AUDIT_DOMAINS
     )
-    if not requires:
-        return "NONE"
-
-    current_head = str(pr.get("head_sha") or "").lower()
-    prior = pr.get("architecture_audit") or {}
-    prior_head = str(prior.get("head_sha") or "").lower()
-    prior_disposition = str(prior.get("disposition") or "").upper()
-
-    if prior_head == current_head and prior_disposition in {"NO_BLOCKER_FOUND", "VERIFIED"}:
-        return "CURRENT"
-    if not prior_head:
-        return "FULL"
-
     delta_domains = _domains(pr, "delta_domains")
-    if bool(pr.get("delta_reopens_architecture")):
-        return "FULL"
-    if bool(delta_domains & ARCHITECTURE_AUDIT_DOMAINS):
-        return "FULL"
-    if blast_radius(pr, delta=True) == "HIGH":
-        return "FULL"
-    return "DELTA"
+    delta_reopens = (
+        bool(pr.get("delta_reopens_architecture"))
+        or bool(delta_domains & ARCHITECTURE_AUDIT_DOMAINS)
+        or blast_radius(pr, delta=True) == "HIGH"
+    )
+    return cp.review_requirement(
+        pr,
+        required=requires,
+        evidence_key="architecture_audit",
+        user_requested=bool(pr.get("user_requested_architecture_audit")),
+        delta_reopens=delta_reopens,
+    )
 
 
 def can_fix_in_place(pr: Mapping[str, Any]) -> bool:
@@ -231,28 +209,17 @@ def _gate_allows_merge(requirement: str, record: Mapping[str, Any]) -> bool:
 
 
 def merge_eligible(pr: Mapping[str, Any]) -> bool:
-    if bool(pr.get("draft")) or bool(pr.get("conflicted")):
-        return False
-    if str(pr.get("ci") or "").lower() != "green":
-        return False
-    if not bool(pr.get("mergeable", True)):
-        return False
-    if not bool(pr.get("required_checks_complete", True)):
-        return False
-    if not bool(pr.get("issue_acceptance_complete", True)):
-        return False
-    if not bool(pr.get("ordinary_review_complete", False)):
-        return False
-
-    adv = adversarial_review_requirement(pr)
-    if not _gate_allows_merge(adv, pr.get("adversarial_review") or {}):
-        return False
-
-    arch = architecture_audit_requirement(pr)
-    if not _gate_allows_merge(arch, pr.get("architecture_audit") or {}):
-        return False
-
-    return True
+    shared = dict(pr)
+    shared["required_checks_green"] = (
+        str(pr.get("ci") or "").lower() == "green"
+        and bool(pr.get("required_checks_complete", True))
+    )
+    shared["checks_head_sha"] = pr.get("checks_head_sha") or pr.get("head_sha")
+    shared["acceptance_complete"] = bool(pr.get("issue_acceptance_complete", True))
+    shared["ordinary_review_complete"] = bool(pr.get("ordinary_review_complete", False))
+    shared["adversarial_review_required"] = adversarial_review_requirement(pr) != "NONE"
+    shared["architecture_audit_required"] = architecture_audit_requirement(pr) != "NONE"
+    return cp.merge_eligible(shared)
 
 
 def classify_pr(pr: Mapping[str, Any]) -> str:
