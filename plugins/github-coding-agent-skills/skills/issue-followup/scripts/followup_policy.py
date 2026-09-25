@@ -27,9 +27,13 @@ def claim_transition_valid(before: Mapping[str, Any], after: Mapping[str, Any]) 
 
 
 def exact_head_current(work: Mapping[str, Any]) -> bool:
-    tested = str(work.get("tested_head") or "")
-    current = str(work.get("head_sha") or "")
-    return bool(tested) and tested == current
+    return cp.exact_head_evidence_current(
+        {
+            "head_sha": work.get("head_sha"),
+            "verification": {"head_sha": work.get("tested_head")},
+        },
+        "verification",
+    )
 
 
 def handoff_allowed(work: Mapping[str, Any]) -> bool:
