@@ -1,0 +1,35 @@
+name: PR Auto policy tests
+
+on:
+  pull_request:
+    paths:
+      - "pr-auto/**"
+      - ".github/workflows/pr-auto-policy.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "pr-auto/**"
+      - ".github/workflows/pr-auto-policy.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Python policy tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Run PR Auto policy tests
+        run: python3 -m unittest discover -s pr-auto/scripts -p "test_*.py" -v
