@@ -3,6 +3,8 @@ from __future__ import annotations
 
 from typing import Any, Iterable, Mapping
 
+import control_plane_policy as cp
+
 NEEDS = "status:needs-followup"
 IN_PROGRESS = "status:in-progress"
 
