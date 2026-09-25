@@ -1,13 +1,13 @@
 ---
 name: ci-fixer
-description: Diagnose, explain, repair, and verify broken GitHub Actions CI with minimal conversational tool churn by batching GitHub connector reads and writes through Code Mode. Use for failing PR checks, red workflow runs, flaky jobs, stale PR branches, runner/toolchain/container problems, unrelated CI fanout, generated-artifact drift, build/link/native SDK failures, or requests such as "what is wrong with PR 584", "fix the CI", "get this PR green", or "merge it once green". Includes SearchKernel-specific live workflow/AGENTS handling and CTO closure rules.
+description: Diagnose, explain, repair, and verify broken CI, builds, and repository development commands with minimal conversational tool churn by batching evidence gathering through Code Mode. Use for failing PR checks, red workflow runs, flaky jobs, stale PR branches, local/default-branch failures such as ./dev doctor, ./dev check, or ./dev universe, runner/toolchain/container problems, unrelated CI fanout, generated-artifact drift, compiler/linker/native SDK failures, or requests such as "what is wrong with PR 584", "fix the CI", "why is main broken", "fix ./dev check", or "merge it once green". Includes SearchKernel-specific live workflow/AGENTS handling and CTO closure rules.
 ---
 
 # CI Fixer
 
 ## Goal
 
-Turn a CI investigation that would normally require many serial GitHub calls into a small number of batched evidence-gathering passes, then repair the root cause when authorized.
+Turn a CI/build/development-environment investigation that would normally require many serial repository and GitHub calls into a small number of batched evidence-gathering passes, then repair the root cause when authorized.
 
 Prefer evidence over guesses. Do not repeatedly poll or fetch broad logs when a narrower query can answer the question.
 
@@ -32,6 +32,8 @@ Accept any of:
 - workflow run URL or run ID;
 - commit SHA;
 - a named failing check/job;
+- a failing local or default-branch command plus its error/log, including repository entry points such as `./dev doctor`, `./dev check`, or `./dev universe`;
+- a compiler, linker, container, toolchain, native-SDK, cache, or generated-artifact failure observed outside GitHub Actions;
 - a request to inspect failing open PRs in a repository.
 
 For SearchKernel project conversations, a bare PR number defaults to `superkelvint/searchkernel` unless the conversation clearly identifies another repository.
@@ -44,13 +46,13 @@ Infer the requested mode from the user's wording:
 
 ### Inspect
 
-Examples: "what's wrong", "why is this red", "diagnose PR 584".
+Examples: "what's wrong", "why is this red", "diagnose PR 584", "why does ./dev check fail on main".
 
 Diagnose and report. Do not mutate repository state.
 
 ### Repair
 
-Examples: "fix it", "get CI green", "move this PR forward".
+Examples: "fix it", "get CI green", "move this PR forward", "fix ./dev universe on main".
 
 Diagnose, repair the root cause when safe and supported, push/update the PR, and verify the exact new head. Do not merge unless the user also requested merge/closure or their request clearly means complete the integration.
 
@@ -75,6 +77,20 @@ Before substantive SearchKernel CI repair, review, PR management, merge, or clos
 Do these live reads in parallel when possible.
 
 Repository rules override generic repair behavior below. If current rules require a worktree or another execution constraint that the available environment cannot satisfy, diagnose fully and report the concrete blocker rather than bypassing the rule.
+
+## Local/default-branch failure workflow
+
+When the failure is observed locally or on the repository default branch and no PR exists yet:
+
+1. Establish the repository, exact current default-branch head, failing command, and first meaningful error. Reproduce when the available execution environment can faithfully run the repository command; otherwise treat the supplied log as evidence and identify the environment gap.
+2. Read repository build/environment authority before mutating toolchains or product code. For SearchKernel, fetch current `WORKFLOW.md`, `AGENTS.md`, and `BUILDING.md` in the same early batch.
+3. Classify the failure with the same failure taxonomy used for CI. Correlate it with current default history, build scripts, container/toolchain contracts, generated artifacts, caches, native SDK provenance, and recent infrastructure changes as applicable.
+4. In Repair/Closure mode, follow the repository's durable work rules before code changes. For SearchKernel, when the live `AGENTS.md` requires a directly assigned non-trivial repair to have an issue, create that exact bounded issue with canonical labels, claim it safely, and use the required task branch/worktree rather than editing shared `main`.
+5. Add a regression/test for deterministic product or tooling defects when repository policy requires it, observe the failure before the fix, implement the smallest root-cause repair, and rerun the exact originally failing command.
+6. Run broader verification proportional to the repair. Open/update the required PR and bind all further evidence to its exact head.
+7. In Closure mode, continue through review/merge/post-merge reconciliation. In Inspect mode, stop after an evidenced diagnosis and smallest repair direction.
+
+Do not create a separate generic repair workflow merely because the failure began outside GitHub Actions. The same root-cause classification and false-green rules apply.
 
 ## Diagnostic workflow
 
@@ -280,6 +296,8 @@ Do not give a giant inventory of successful checks unless the user asks.
 - "Fix the failing CI on #461."
 - "This Ruby-only PR is running TypeScript and Python checks. Fix that."
 - "Why did this workflow lose cargo halfway through?"
+- "Why does ./dev doctor fail on main? Fix the root cause."
+- "Fix ./dev universe; it is rebuilding the native/toolchain state incorrectly."
 - "Bring all failing PRs up to the main CI fixes."
 - "Fix and merge this once the exact head is green."
 

@@ -1,6 +1,6 @@
 # GitHub Coding Agent Skills
 
-This repository contains nine independent Codex/ChatGPT skills for GitHub engineering workflows.
+This repository contains eleven independent Codex/ChatGPT skills for GitHub engineering workflows.
 
 ## $issue
 
@@ -15,6 +15,18 @@ $issue "schema fidelity"
 ~~~
 
 Once $issue successfully claims an issue, it may not terminate with the issue stranded: it must either open/preserve an implementation PR or release the claim. Before handoff it also performs the same test-coverage gut check described below.
+
+## $issue-reconcile
+
+Audit and repair the **issue queue itself** rather than selecting one issue to implement. It batches issue/claim/PR state, finds stale or contradictory workflow labels, stranded claims, satisfied blockers, duplicate/superseded work, and issues already satisfied on the default branch, then applies only evidence-backed repairs.
+
+~~~text
+$issue-reconcile
+$issue-reconcile status
+clean up stale issues and reconcile the queue
+~~~
+
+It deliberately does not replace normal `$issue` discovery: ordinary workers still trust the canonical `status:ready` queue. Reconciliation is the exceptional integrity-repair path and refuses to guess ambiguous ownership or semantic closure.
 
 ## $test-gut-check
 
@@ -51,6 +63,18 @@ improve coverage where it most reduces correctness risk
 ~~~
 
 For SearchKernel it uses `./dev coverage` as the canonical exact-head evidence source and treats native/real-Vespa verification as separate required evidence when behavior crosses the native boundary.
+
+## $architecture-audit
+
+Run a systematic subsystem-wide architecture and correctness audit, not merely a PR review. It traces the complete execution path, reads the relevant contracts and SearchKernel audit checklists, checks independent/oracle behavior where required, challenges false-green tests, deduplicates findings against the issue queue, and records bounded remediation work.
+
+~~~text
+$architecture-audit searchkerneld
+audit the IR-to-Vespa lowering path
+systematically audit the native ABI/C++ boundary
+~~~
+
+A quick scan can only produce `UNVERIFIED`. The deterministic evidence gate permits `NO BLOCKER FOUND` only after the required adversarial evidence is present, and the skill never promotes its own audit to `VERIFIED`.
 
 ## $verify
 
@@ -136,6 +160,18 @@ coverage-risk/
   references/searchkernel.md
   scripts/coverage_risk.py
   scripts/test_coverage_risk.py
+architecture-audit/
+  SKILL.md
+  agents/openai.yaml
+  references/searchkernel.md
+  scripts/audit_policy.py
+  scripts/test_audit_policy.py
+issue-reconcile/
+  SKILL.md
+  agents/openai.yaml
+  references/searchkernel.md
+  scripts/reconcile_policy.py
+  scripts/test_reconcile_policy.py
 verify/
   SKILL.md
   agents/openai.yaml
@@ -207,6 +243,8 @@ That produces the discovery layout directly:
 ~~~text
 ~/.agents/skills/
   issue/SKILL.md
+  issue-reconcile/SKILL.md
+  architecture-audit/SKILL.md
   test-gut-check/SKILL.md
   test-gut-check-batch/SKILL.md
   coverage-risk/SKILL.md
@@ -219,7 +257,7 @@ That produces the discovery layout directly:
 
 Then restart Codex if the skills do not appear immediately.
 
-Update all nine skills later with:
+Update all eleven skills later with:
 
 ~~~bash
 git -C ~/.agents/skills pull
@@ -227,11 +265,13 @@ git -C ~/.agents/skills pull
 
 ### If `~/.agents/skills` already contains other skills
 
-Do not clone over an existing non-empty directory. In that case, keep this repository elsewhere and symlink its nine skill directories:
+Do not clone over an existing non-empty directory. In that case, keep this repository elsewhere and symlink its eleven skill directories:
 
 ~~~bash
 git clone https://github.com/superkelvint/github-issue-worker.git ~/.codex/github-issue-worker
 ln -s ~/.codex/github-issue-worker/issue ~/.agents/skills/issue
+ln -s ~/.codex/github-issue-worker/issue-reconcile ~/.agents/skills/issue-reconcile
+ln -s ~/.codex/github-issue-worker/architecture-audit ~/.agents/skills/architecture-audit
 ln -s ~/.codex/github-issue-worker/test-gut-check ~/.agents/skills/test-gut-check
 ln -s ~/.codex/github-issue-worker/test-gut-check-batch ~/.agents/skills/test-gut-check-batch
 ln -s ~/.codex/github-issue-worker/coverage-risk ~/.agents/skills/coverage-risk
@@ -250,9 +290,9 @@ If you previously installed an older copy of any of these skills, remove that ol
 The repository's deterministic skill helpers are covered with standard-library Python unit tests. Run the full suite with:
 
 ~~~bash
-for dir in issue verify issue-followup ci-fixer pr-auto test-gut-check test-gut-check-batch coverage-risk cto-reflection; do
+for dir in issue issue-reconcile architecture-audit verify issue-followup ci-fixer pr-auto test-gut-check test-gut-check-batch coverage-risk cto-reflection; do
   python3 -m unittest discover -s "$dir/scripts" -p 'test_*.py' -v
 done
 ~~~
 
-The suite currently covers issue queue/claim/worktree/release safety, draft PR verification, follow-up lifecycle, CI diagnosis/repair policy, PR Auto fleet policy, test gut-check policy, batch audit caching/mutation rules, coverage-risk inventory parsing, and CTO reflection recommendation guards.
+The suite currently covers issue queue/claim/worktree/release safety, fleet issue reconciliation policy, architecture-audit negative-conclusion gating, draft PR verification, follow-up lifecycle, CI diagnosis/repair policy, PR Auto fleet policy, test gut-check policy, batch audit caching/mutation rules, coverage-risk inventory parsing, and CTO reflection recommendation guards.
