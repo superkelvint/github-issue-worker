@@ -26,6 +26,21 @@ MEDIUM_RISK_DOMAINS = {
 }
 BEHAVIORAL_DOMAINS = HIGH_RISK_DOMAINS | MEDIUM_RISK_DOMAINS
 
+# Mirror Issue Fixer's architecture-audit triggers. A PR may require this gate
+# even when it does not require a heavyweight adversarial review (for example,
+# a transport or CI-selector change that can alter cross-layer coverage).
+ARCHITECTURE_AUDIT_DOMAINS = {
+    "lifecycle", "concurrency", "shutdown", "ownership",
+    "portable-semantics", "canonical-semantics", "query-lowering", "ranking",
+    "schema-fidelity", "protocol", "generated-artifacts",
+    "persistence", "reopen", "migration",
+    "native-boundary", "ffi", "abi", "error-domain",
+    "result-fidelity", "grouping", "sorting", "response-semantics",
+    "transport", "daemon", "client-core", "client-parity",
+    "ci-selector", "verification-architecture", "acceptance-harness", "verifier",
+    "architecture", "security", "trust-boundary", "frozen-contract",
+}
+
 ACTION_PRIORITY = {
     "MERGE_NOW": 10,
     "UPDATE_FROM_MAIN": 20,
@@ -34,6 +49,7 @@ ACTION_PRIORITY = {
     "FIX_IMPLEMENTATION": 50,
     "REVIEW_NOW": 60,
     "ADVERSARIAL_REVIEW_REQUIRED": 70,
+    "ARCHITECTURE_AUDIT_REQUIRED": 75,
     "FOLLOW_UP_REQUIRED": 80,
     "STALE_OR_SUPERSEDED": 90,
     "ACTIVE_WORK": 100,
@@ -42,11 +58,14 @@ ACTION_PRIORITY = {
 ACTIONABLE_STATES = {
     "MERGE_NOW", "UPDATE_FROM_MAIN", "FIX_CI", "RESOLVE_CONFLICT",
     "FIX_IMPLEMENTATION", "REVIEW_NOW", "ADVERSARIAL_REVIEW_REQUIRED",
-    "FOLLOW_UP_REQUIRED", "STALE_OR_SUPERSEDED",
+    "ARCHITECTURE_AUDIT_REQUIRED", "FOLLOW_UP_REQUIRED",
+    "STALE_OR_SUPERSEDED",
 }
 
-_REVIEW_MARKER = "<!-- pr-auto:adversarial-review -->"
+_ADVERSARIAL_MARKER = "<!-- pr-auto:adversarial-review -->"
+_ARCHITECTURE_MARKER = "<!-- pr-auto:architecture-audit -->"
 _FIELD_RE = re.compile(r"^(head_sha|disposition|scope|reviewed_at):\s*(.+?)\s*$", re.M)
+_VALID_DISPOSITIONS = {"NO_BLOCKER_FOUND", "CHANGES_REQUIRED", "VERIFIED"}
 
 
 @dataclass(frozen=True)
@@ -88,15 +107,15 @@ def blast_radius(pr: Mapping[str, Any], *, delta: bool = False) -> str:
     return "LOW"
 
 
-def parse_review_comment(text: str) -> ReviewRecord | None:
-    if _REVIEW_MARKER not in text:
+def _parse_gate_comment(text: str, marker: str) -> ReviewRecord | None:
+    if marker not in text:
         return None
     values = {name: value for name, value in _FIELD_RE.findall(text)}
     head = values.get("head_sha", "").strip()
     disposition = values.get("disposition", "").strip().upper()
     if len(head) != 40 or not re.fullmatch(r"[0-9a-fA-F]{40}", head):
         return None
-    if disposition not in {"NO_BLOCKER_FOUND", "CHANGES_REQUIRED", "VERIFIED"}:
+    if disposition not in _VALID_DISPOSITIONS:
         return None
     return ReviewRecord(
         head_sha=head.lower(),
@@ -106,10 +125,27 @@ def parse_review_comment(text: str) -> ReviewRecord | None:
     )
 
 
+def parse_review_comment(text: str) -> ReviewRecord | None:
+    return _parse_gate_comment(text, _ADVERSARIAL_MARKER)
+
+
+def parse_architecture_audit_comment(text: str) -> ReviewRecord | None:
+    return _parse_gate_comment(text, _ARCHITECTURE_MARKER)
+
+
 def latest_review_record(comments: Iterable[str]) -> ReviewRecord | None:
     latest = None
     for comment in comments:
         parsed = parse_review_comment(comment)
+        if parsed is not None:
+            latest = parsed
+    return latest
+
+
+def latest_architecture_audit_record(comments: Iterable[str]) -> ReviewRecord | None:
+    latest = None
+    for comment in comments:
+        parsed = parse_architecture_audit_comment(comment)
         if parsed is not None:
             latest = parsed
     return latest
@@ -144,6 +180,38 @@ def adversarial_review_requirement(pr: Mapping[str, Any]) -> str:
     return "DELTA"
 
 
+def architecture_audit_requirement(pr: Mapping[str, Any]) -> str:
+    """Return NONE, CURRENT, DELTA, or FULL for the architecture-audit gate."""
+    if bool(pr.get("user_requested_architecture_audit")):
+        return "FULL"
+
+    domains = _domains(pr)
+    requires = bool(pr.get("policy_requires_architecture_audit")) or bool(
+        domains & ARCHITECTURE_AUDIT_DOMAINS
+    )
+    if not requires:
+        return "NONE"
+
+    current_head = str(pr.get("head_sha") or "").lower()
+    prior = pr.get("architecture_audit") or {}
+    prior_head = str(prior.get("head_sha") or "").lower()
+    prior_disposition = str(prior.get("disposition") or "").upper()
+
+    if prior_head == current_head and prior_disposition in {"NO_BLOCKER_FOUND", "VERIFIED"}:
+        return "CURRENT"
+    if not prior_head:
+        return "FULL"
+
+    delta_domains = _domains(pr, "delta_domains")
+    if bool(pr.get("delta_reopens_architecture")):
+        return "FULL"
+    if bool(delta_domains & ARCHITECTURE_AUDIT_DOMAINS):
+        return "FULL"
+    if blast_radius(pr, delta=True) == "HIGH":
+        return "FULL"
+    return "DELTA"
+
+
 def can_fix_in_place(pr: Mapping[str, Any]) -> bool:
     return all([
         bool(pr.get("bounded_fix")),
@@ -152,6 +220,14 @@ def can_fix_in_place(pr: Mapping[str, Any]) -> bool:
         not bool(pr.get("decision_required")),
         bool(pr.get("verification_available", True)),
     ])
+
+
+def _gate_allows_merge(requirement: str, record: Mapping[str, Any]) -> bool:
+    if requirement not in {"NONE", "CURRENT"}:
+        return False
+    if requirement == "CURRENT" and str(record.get("disposition") or "").upper() == "CHANGES_REQUIRED":
+        return False
+    return True
 
 
 def merge_eligible(pr: Mapping[str, Any]) -> bool:
@@ -169,12 +245,13 @@ def merge_eligible(pr: Mapping[str, Any]) -> bool:
         return False
 
     adv = adversarial_review_requirement(pr)
-    if adv not in {"NONE", "CURRENT"}:
+    if not _gate_allows_merge(adv, pr.get("adversarial_review") or {}):
         return False
 
-    prior = pr.get("adversarial_review") or {}
-    if adv == "CURRENT" and str(prior.get("disposition") or "").upper() == "CHANGES_REQUIRED":
+    arch = architecture_audit_requirement(pr)
+    if not _gate_allows_merge(arch, pr.get("architecture_audit") or {}):
         return False
+
     return True
 
 
@@ -207,6 +284,9 @@ def classify_pr(pr: Mapping[str, Any]) -> str:
     if adversarial_review_requirement(pr) in {"FULL", "DELTA"}:
         return "ADVERSARIAL_REVIEW_REQUIRED"
 
+    if architecture_audit_requirement(pr) in {"FULL", "DELTA"}:
+        return "ARCHITECTURE_AUDIT_REQUIRED"
+
     if bool(pr.get("ready_for_review")) and not bool(pr.get("ordinary_review_complete", False)):
         return "REVIEW_NOW"
 
@@ -224,6 +304,7 @@ def evaluate_pr(pr: Mapping[str, Any]) -> dict[str, Any]:
         "state": state,
         "blast_radius": blast_radius(pr),
         "adversarial_review": adversarial_review_requirement(pr),
+        "architecture_audit": architecture_audit_requirement(pr),
         "merge_eligible": merge_eligible(pr),
         "fix_in_place": can_fix_in_place(pr) if pr.get("implementation_defect") else None,
         "actionable": state in ACTIONABLE_STATES,
