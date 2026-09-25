@@ -76,6 +76,8 @@ def checks_current_and_green(state: Mapping[str, Any]) -> bool:
     return bool(_str(state, "head_sha")) and _str(state, "checks_head_sha") == _str(state, "head_sha")
 
 def merge_eligible(state: Mapping[str, Any]) -> bool:
+    if not bool(state.get("merge_evidence_complete")):
+        return False
     if bool(state.get("draft")) or bool(state.get("conflicted")):
         return False
     if not bool(state.get("mergeable", True)) or base_update_required(state):
@@ -96,7 +98,14 @@ def merge_eligible(state: Mapping[str, Any]) -> bool:
 def post_merge_reconciled(state: Mapping[str, Any]) -> bool:
     if not bool(state.get("merged")):
         return False
-    return all([bool(state.get("merge_reachable_from_main")), bool(state.get("linked_issue_state_correct", True)), bool(state.get("acceptance_complete", state.get("issue_acceptance_complete", True))), not bool(state.get("stale_labels_or_duplicate_work"))])
+    if not bool(state.get("reconciliation_evidence_complete")):
+        return False
+    return all([
+        bool(state.get("merge_reachable_from_main")),
+        bool(state.get("linked_issue_state_correct")),
+        bool(state.get("acceptance_complete", state.get("issue_acceptance_complete"))),
+        state.get("stale_labels_or_duplicate_work") is False,
+    ])
 
 def propagation_required(state: Mapping[str, Any]) -> bool:
     return all([bool(state.get("shared_fix_landed")), bool(state.get("affected_sibling_prs")), not bool(state.get("propagation_complete"))])
