@@ -1,6 +1,6 @@
 # GitHub Coding Agent Skills
 
-This repository contains eight independent Codex/ChatGPT skills for GitHub engineering workflows.
+This repository contains nine independent Codex/ChatGPT skills for GitHub engineering workflows.
 
 ## $issue
 
@@ -39,6 +39,18 @@ audit every open PR for missing tests and fix what you can
 ~~~
 
 It never merges or approves PRs; its job is test inventory, gap detection, remediation, exact-head verification, and a compact fleet report.
+
+## $coverage-risk
+
+Measure fresh repository code coverage, identify inadequately tested production areas with the highest correctness/architectural risk, then improve behavioral coverage in descending risk order. It refuses to optimize blindly for percentage and explicitly challenges false-green cases such as mock-only coverage, stale artifacts, untested error/lifecycle paths, and Rust coverage being mistaken for native C++ coverage.
+
+~~~text
+$coverage-risk
+analyze current repo coverage and fix the highest-risk gaps
+improve coverage where it most reduces correctness risk
+~~~
+
+For SearchKernel it uses `./dev coverage` as the canonical exact-head evidence source and treats native/real-Vespa verification as separate required evidence when behavior crosses the native boundary.
 
 ## $verify
 
@@ -118,6 +130,12 @@ test-gut-check-batch/
   agents/openai.yaml
   scripts/batch_gut_check_policy.py
   scripts/test_batch_gut_check_policy.py
+coverage-risk/
+  SKILL.md
+  agents/openai.yaml
+  references/searchkernel.md
+  scripts/coverage_risk.py
+  scripts/test_coverage_risk.py
 verify/
   SKILL.md
   agents/openai.yaml
@@ -168,6 +186,7 @@ That produces the discovery layout directly:
   issue/SKILL.md
   test-gut-check/SKILL.md
   test-gut-check-batch/SKILL.md
+  coverage-risk/SKILL.md
   verify/SKILL.md
   issue-followup/SKILL.md
   ci-fixer/SKILL.md
@@ -177,7 +196,7 @@ That produces the discovery layout directly:
 
 Then restart Codex if the skills do not appear immediately.
 
-Update all eight skills later with:
+Update all nine skills later with:
 
 ~~~bash
 git -C ~/.agents/skills pull
@@ -192,6 +211,7 @@ git clone https://github.com/superkelvint/github-issue-worker.git ~/.codex/githu
 ln -s ~/.codex/github-issue-worker/issue ~/.agents/skills/issue
 ln -s ~/.codex/github-issue-worker/test-gut-check ~/.agents/skills/test-gut-check
 ln -s ~/.codex/github-issue-worker/test-gut-check-batch ~/.agents/skills/test-gut-check-batch
+ln -s ~/.codex/github-issue-worker/coverage-risk ~/.agents/skills/coverage-risk
 ln -s ~/.codex/github-issue-worker/verify ~/.agents/skills/verify
 ln -s ~/.codex/github-issue-worker/issue-followup ~/.agents/skills/issue-followup
 ln -s ~/.codex/github-issue-worker/ci-fixer ~/.agents/skills/ci-fixer
@@ -207,9 +227,9 @@ If you previously installed an older copy of any of these skills, remove that ol
 The repository's deterministic skill helpers are covered with standard-library Python unit tests. Run the full suite with:
 
 ~~~bash
-for dir in issue verify issue-followup ci-fixer pr-auto test-gut-check test-gut-check-batch cto-reflection; do
+for dir in issue verify issue-followup ci-fixer pr-auto test-gut-check test-gut-check-batch coverage-risk cto-reflection; do
   python3 -m unittest discover -s "$dir/scripts" -p 'test_*.py' -v
 done
 ~~~
 
-The suite currently covers issue queue/claim/worktree/release safety, draft PR verification, follow-up lifecycle, CI diagnosis/repair policy, PR Auto fleet policy, test gut-check policy, batch audit caching/mutation rules, and CTO reflection recommendation guards.
+The suite currently covers issue queue/claim/worktree/release safety, draft PR verification, follow-up lifecycle, CI diagnosis/repair policy, PR Auto fleet policy, test gut-check policy, batch audit caching/mutation rules, coverage-risk inventory parsing, and CTO reflection recommendation guards.
