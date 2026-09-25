@@ -1,6 +1,6 @@
 # GitHub Coding Agent Skills
 
-This repository contains five independent Codex/ChatGPT skills for GitHub engineering workflows.
+This repository contains six independent Codex/ChatGPT skills for GitHub engineering workflows.
 
 ## $issue
 
@@ -14,7 +14,19 @@ $issue hnsw
 $issue "schema fidelity"
 ~~~
 
-Once $issue successfully claims an issue, it may not terminate with the issue stranded: it must either open/preserve an implementation PR or release the claim.
+Once $issue successfully claims an issue, it may not terminate with the issue stranded: it must either open/preserve an implementation PR or release the claim. Before handoff it also performs the same test-coverage gut check described below.
+
+## $test-gut-check
+
+Audit one issue or implementing PR for test quality. It reconstructs the implementation lineage, shows the concrete tests already defending the issue, maps them to acceptance criteria and blast radius, looks for false-green coverage, and then adds/strengthens missing tests. If a new regression exposes a product bug, it fixes that bug test-first and verifies the repaired exact head.
+
+~~~text
+$test-gut-check issue 584
+determine test coverage for issue 496 and improve it
+gut check the tests for PR 584
+~~~
+
+It works both before merge and when revisiting an already-merged issue.
 
 ## $verify
 
@@ -69,6 +81,9 @@ issue/
   agents/openai.yaml
   scripts/claim_issue.py
   scripts/release_issue.py
+test-gut-check/
+  SKILL.md
+  agents/openai.yaml
 verify/
   SKILL.md
   agents/openai.yaml
@@ -102,6 +117,7 @@ That produces the discovery layout directly:
 ~~~text
 ~/.agents/skills/
   issue/SKILL.md
+  test-gut-check/SKILL.md
   verify/SKILL.md
   issue-followup/SKILL.md
   ci-fixer/SKILL.md
@@ -110,7 +126,7 @@ That produces the discovery layout directly:
 
 Then restart Codex if the skills do not appear immediately.
 
-Update all five skills later with:
+Update all six skills later with:
 
 ~~~bash
 git -C ~/.agents/skills pull
@@ -118,14 +134,16 @@ git -C ~/.agents/skills pull
 
 ### If `~/.agents/skills` already contains other skills
 
-Do not clone over an existing non-empty directory. In that case, keep this repository elsewhere and symlink its five skill directories:
+Do not clone over an existing non-empty directory. In that case, keep this repository elsewhere and symlink its six skill directories:
 
 ~~~bash
 git clone https://github.com/superkelvint/github-issue-worker.git ~/.codex/github-issue-worker
 ln -s ~/.codex/github-issue-worker/issue ~/.agents/skills/issue
+ln -s ~/.codex/github-issue-worker/test-gut-check ~/.agents/skills/test-gut-check
 ln -s ~/.codex/github-issue-worker/verify ~/.agents/skills/verify
 ln -s ~/.codex/github-issue-worker/issue-followup ~/.agents/skills/issue-followup
-ln -s ~/.codex/github-issue-worker/ci-fixer ~/.agents/skills/ci-fixer\nln -s ~/.codex/github-issue-worker/pr-auto ~/.agents/skills/pr-auto
+ln -s ~/.codex/github-issue-worker/ci-fixer ~/.agents/skills/ci-fixer
+ln -s ~/.codex/github-issue-worker/pr-auto ~/.agents/skills/pr-auto
 ~~~
 
 If you previously installed an older copy of any of these skills, remove that old copy or symlink first so Codex does not discover duplicate skill names.

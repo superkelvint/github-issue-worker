@@ -171,6 +171,29 @@ Tie every adversarial review to the exact reviewed SHA, but do not automatically
 
 Spend expensive skepticism where a false green could matter; do not turn trivial PRs into rituals.
 
+### Test-coverage gut check
+
+For every PR that receives substantive CTO/reviewer inspection, include an explicit test-coverage gut check for its linked issue or stated acceptance scope.
+
+1. Inventory the concrete tests/scenarios/verifiers added or materially changed by the implementation, naming test functions/scenarios rather than only files or suites.
+2. Identify important pre-existing tests that genuinely constrain the changed behavior.
+3. Map those tests to the linked issue acceptance criteria, changed execution paths, and blast-radius risks.
+4. Challenge whether the suite can be falsely green: mock-only coverage for native/runtime behavior, stale-head evidence, alternate ingress bypasses, missing reopen/interleaving/boundary cases, weak value/error assertions, source-text proxies, or a test that never reaches the changed path.
+5. State the coverage gaps explicitly. If none are found, say what evidence supports that conclusion rather than merely citing green CI.
+6. If a meaningful gap is safely actionable on the current PR, add or strengthen the missing test and continue the control loop. If the new test exposes a product defect, observe the failing regression first, fix production code, rerun, and re-review the new exact head.
+7. If the required remediation is materially broader than the PR, create/route a focused follow-up instead of hiding the gap.
+
+Use the standalone `$test-gut-check` workflow when the issue needs a deeper dedicated pass or has already merged.
+
+A substantive review record should summarize:
+- tests added/changed for the issue;
+- relevant pre-existing coverage relied upon;
+- gaps found;
+- tests/fixes added to rectify them;
+- residual untested risk, if any.
+
+For trivial docs/formatting/mechanical changes where runtime test coverage is genuinely not applicable, record that explicitly rather than inventing tests.
+
 ## Stage 3 — Advance the fleet
 
 Process all independent safe actions in batches where possible.
@@ -234,7 +257,7 @@ Normal review and adversarial review are different.
 
 The skill may organize evidence for an adversarial review, but must never claim an adversarial review occurred merely because CI is green, a diff was skimmed, or metadata was collected.
 
-Only record an adversarial review after the model actually performs the repository-required adversarial reasoning for that PR and head.
+Only record an adversarial review after the model actually performs the repository-required adversarial reasoning for that PR and head, including the test-coverage gut check when it is applicable.
 
 ### Exact-head review identity
 
@@ -254,6 +277,7 @@ PR-AUTO ADVERSARIAL REVIEW
 head_sha: <40-char SHA>
 disposition: NO_BLOCKER_FOUND | CHANGES_REQUIRED | VERIFIED
 scope: <short description>
+test_coverage: SUFFICIENT | GAPS_RECTIFIED | GAPS_REMAIN | N/A
 reviewed_at: <ISO timestamp if available>
 ```
 
@@ -309,7 +333,8 @@ Scale this to blast radius. Relevant checks include:
 - absence and present-empty semantics disagree;
 - concurrency/interleavings remain untested;
 - alternate semantic ingress bypasses the changed path;
-- merge happened but issue acceptance criteria remain unresolved.
+- merge happened but issue acceptance criteria remain unresolved;
+- issue-specific tests were never inventoried, so a green suite may not actually defend the changed behavior.
 
 ## Stage 6 — Re-snapshot and iterate to a fixed point
 

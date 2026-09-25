@@ -105,12 +105,13 @@ Before changing code:
 10. Determine whether current default already satisfies the issue. If so, follow **Already resolved on default**.
 11. For reported bugs/correctness defects, add and observe a failing regression test before changing production code.
 12. Implement the smallest correct change.
-13. Run focused verification, then repository-required broader gates.
-14. Review the complete task diff and staged diff.
-15. Commit and push only the claimed branch.
-16. Hand off a review-ready PR with `needs-cto-review` and `Fixes #<number>`, preserving verification evidence.
-17. Before termination, ensure a PR exists or safely release the claim.
-18. Stop.
+13. Perform the mandatory test-coverage gut check: inventory issue-specific and relevant pre-existing tests, map them to acceptance criteria and blast radius, challenge false-green paths, and add/strengthen missing coverage.
+14. Run focused verification, then repository-required broader gates.
+15. Review the complete task diff and staged diff.
+16. Commit and push only the claimed branch.
+17. Hand off a review-ready PR with `needs-cto-review` and `Fixes #<number>`, preserving verification evidence.
+18. Before termination, ensure a PR exists or safely release the claim.
+19. Stop.
 
 ## Discover work from labels
 
@@ -247,6 +248,20 @@ For a reported bug, defect, regression, incorrect behavior, or correctness issue
 
 Do not weaken acceptance coverage merely to get green.
 
+## Test coverage gut check
+
+Before handoff, audit whether the issue is actually well defended by tests. This is broader than regression-first.
+
+1. List every test, scenario, fixture, verifier, property/state-machine case, or E2E case added or materially changed for the issue. Name concrete tests, not just files or suites.
+2. Identify important pre-existing tests that genuinely exercise the changed behavior.
+3. Map that inventory to the issue acceptance criteria, changed execution paths, architectural boundaries, and relevant failure modes.
+4. Ask how the suite could be falsely green: wrong path never exercised, mock-only coverage for a native/runtime change, stale-head evidence, source-text assertions instead of behavior, missing reopen/interleaving/boundary cases, alternate ingress bypasses, or weak value/error assertions.
+5. If a meaningful gap exists, add or strengthen the test before handoff. Do not stop at recommending it when it is safely actionable.
+6. If the new test exposes a product defect, observe the failing regression before changing production code, then fix and rerun.
+7. Include the resulting test inventory, gaps found, and rectification in the PR evidence.
+
+The standalone `$test-gut-check` skill applies the same workflow when revisiting an open or already-merged issue.
+
 ## Environment and verification recovery
 
 A failed required check is work to diagnose, not permission to stop.
@@ -274,6 +289,8 @@ A review-ready PR must contain:
 - `Fixes #<number>`;
 - concise root-cause/behavior summary;
 - what changed;
+- tests added/changed plus important pre-existing tests relied upon;
+- coverage gaps found and how they were rectified;
 - regression/acceptance coverage;
 - exact verification commands/results;
 - known limitations.
