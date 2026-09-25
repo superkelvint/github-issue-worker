@@ -81,4 +81,15 @@ def merge_allowed(ctx: Mapping[str, Any], mode: str) -> bool:
     shared["ordinary_review_complete"] = bool(ctx.get("required_review_complete", True))
     shared["acceptance_complete"] = bool(ctx.get("acceptance_complete", True))
     shared["unresolved_review_feedback"] = not bool(ctx.get("review_blockers_resolved", True))
+    shared["merge_evidence_complete"] = all(
+        key in ctx
+        for key in (
+            "head_sha",
+            "verified_head_sha",
+            "required_checks_green",
+            "required_review_complete",
+            "acceptance_complete",
+            "review_blockers_resolved",
+        )
+    )
     return cp.merge_eligible(shared)
