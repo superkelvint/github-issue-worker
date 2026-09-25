@@ -171,6 +171,29 @@ cto-reflection/
 
 The skills prefer a runtime-native GitHub connector when it is actually exposed and sufficient. If that connector is missing or cannot perform the required authenticated repository operation, they fall back to authenticated `gh` — including inside ChatGPT/Codex runtimes. They must not substitute public web search or unauthenticated `curl` calls for private GitHub access.
 
+## ChatGPT install (GitHub-synced)
+
+This repository is also a ChatGPT plugin marketplace. The root skill directories remain the source of truth; the installable plugin mirror under `plugins/github-coding-agent-skills/skills/` is generated from them and checked for drift in CI.
+
+To connect it once as a workspace admin:
+
+1. Open **Workspace settings > Plugins**.
+2. Select **Add > Import marketplace**.
+3. Use **Source** `https://github.com/superkelvint/github-issue-worker`.
+4. Leave **Path** empty.
+5. Use branch `main` (or leave Branch empty to follow the default branch).
+6. Authorize GitHub and import the marketplace.
+
+ChatGPT then checks the GitHub marketplace for updates daily. Use **Marketplaces > GitHub Coding Agent Skills > Sync now** when you want a merged skill change immediately.
+
+After editing or adding a root-level skill, refresh the generated plugin mirror before committing:
+
+~~~bash
+python3 tools/sync_marketplace_plugin.py
+~~~
+
+CI runs the same tool with `--check` and fails if the GitHub-synced package has drifted from the root skills.
+
 ## Local install
 
 The simplest installation is to clone this repository directly as your Codex user skills directory:
