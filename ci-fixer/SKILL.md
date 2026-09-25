@@ -291,4 +291,8 @@ After changing CI Fixer policy, run:
 
 ```bash
 python3 -m unittest discover -s ci-fixer/scripts -p "test_*.py" -v
-```
+```\n\n## Shared closure control-plane
+
+Before stopping after a repair, exact-head verification, or merge, normalize the current PR state and evaluate `scripts/control_plane_policy.py` using `ci-fixer-inspect`, `ci-fixer-repair`, or `ci-fixer-closure` according to the invocation mode.
+
+The shared helper owns exact-head freshness, merge eligibility, and post-merge reconciliation semantics. Continue every returned `owned_action`. Stop only when no owned action remains or the helper exposes an explicit unowned/external handoff. A green check attached to an old head must never satisfy the closure gate.\n
