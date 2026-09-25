@@ -50,6 +50,16 @@ class ControlPlanePolicyTests(unittest.TestCase):
         result = p.evaluate(state(), p.authority_for("pr-auto"))
         self.assertEqual(result["owned_actions"], ["MERGE"])
 
+    def test_red_ci_never_coexists_with_merge_action(self):
+        result = p.evaluate(state(ci_red=True), p.authority_for("pr-auto"))
+        self.assertIn("DIAGNOSE_CI", result["actions"])
+        self.assertNotIn("MERGE", result["actions"])
+
+    def test_known_implementation_defect_never_coexists_with_merge_action(self):
+        result = p.evaluate(state(implementation_defect=True), p.authority_for("pr-auto"))
+        self.assertIn("FIX_IMPLEMENTATION", result["actions"])
+        self.assertNotIn("MERGE", result["actions"])
+
     def test_merge_requires_reconciliation(self):
         result = p.evaluate(state(merged=True, merge_reachable_from_main=False, reconciliation_evidence_complete=True, linked_issue_state_correct=True, stale_labels_or_duplicate_work=False), p.authority_for("issue-fixer"))
         self.assertEqual(result["owned_actions"], ["RECONCILE_ISSUE"])
