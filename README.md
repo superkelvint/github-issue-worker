@@ -85,6 +85,18 @@ $pr-auto 584
 
 A bare `pr auto` is intentionally action-oriented. Use `pr auto status` for a read-only snapshot. PR Auto's deterministic policy helper is covered by `python3 pr-auto/scripts/test_pr_auto_policy.py`.
 
+## $cto-reflection
+
+Review recent SearchKernel/CTO conversations, normally the last 24 hours, and turn repeated friction into concrete process improvements. It refreshes the current CTO workflow and repository rules, inspects relevant skills, distinguishes tooling/workflow/skill/user-habit root causes, and challenges proposed shortcuts for false-green risk.
+
+~~~text
+$cto-reflection
+cto reflection
+reflect on the last 24 hours and improve our process
+~~~
+
+It prefers the narrowest durable fix: improve an existing skill when that is enough, create a new skill only when a distinct workflow is genuinely missing, and keep repository/tooling or CTO-policy changes as explicit recommendations unless authorized.
+
 ## Layout
 
 ~~~text
@@ -113,6 +125,11 @@ pr-auto/
   SKILL.md
   agents/openai.yaml
   references/searchkernel.md
+cto-reflection/
+  SKILL.md
+  agents/openai.yaml
+  references/reflection-rubric.md
+  references/report-template.md
 ~~~
 
 ## GitHub access fallback
@@ -138,6 +155,7 @@ That produces the discovery layout directly:
   issue-followup/SKILL.md
   ci-fixer/SKILL.md
   pr-auto/SKILL.md
+  cto-reflection/SKILL.md
 ~~~
 
 Then restart Codex if the skills do not appear immediately.
@@ -161,6 +179,7 @@ ln -s ~/.codex/github-issue-worker/verify ~/.agents/skills/verify
 ln -s ~/.codex/github-issue-worker/issue-followup ~/.agents/skills/issue-followup
 ln -s ~/.codex/github-issue-worker/ci-fixer ~/.agents/skills/ci-fixer
 ln -s ~/.codex/github-issue-worker/pr-auto ~/.agents/skills/pr-auto
+ln -s ~/.codex/github-issue-worker/cto-reflection ~/.agents/skills/cto-reflection
 ~~~
 
 If you previously installed an older copy of any of these skills, remove that old copy or symlink first so Codex does not discover duplicate skill names.
