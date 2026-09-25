@@ -1,6 +1,6 @@
 # GitHub Coding Agent Skills
 
-This repository contains three independent Codex/ChatGPT skills for a GitHub issue-to-PR workflow.
+This repository contains four independent Codex/ChatGPT skills for GitHub engineering workflows.
 
 ## $issue
 
@@ -36,6 +36,18 @@ $issue-followup
 
 $issue-followup does not merge, approve, close, or create replacement PRs for ordinary follow-up work.
 
+## $ci-fixer
+
+Diagnose broken GitHub Actions CI with batched GitHub reads, isolate the first meaningful failure, classify the root cause, repair it when authorized, and verify the exact repaired PR head. It understands stale branches, unrelated CI fanout, runner/toolchain/container failures, generated-artifact drift, build/link/native SDK failures, real product regressions, and test/harness defects.
+
+~~~text
+$ci-fixer PR 584
+$ci-fixer fix CI on PR 461
+$ci-fixer fix and merge PR 470
+~~~
+
+For SearchKernel, $ci-fixer fetches the current CTO workflow and repository agent rules before substantive repair or merge work and performs exact-head/false-green checks instead of treating a rerun or merge result as sufficient evidence.
+
 ## Layout
 
 ~~~text
@@ -50,6 +62,10 @@ verify/
 issue-followup/
   SKILL.md
   agents/openai.yaml
+ci-fixer/
+  SKILL.md
+  agents/openai.yaml
+  references/searchkernel-patterns.md
 ~~~
 
 ## GitHub access fallback
@@ -71,11 +87,12 @@ That produces the discovery layout directly:
   issue/SKILL.md
   verify/SKILL.md
   issue-followup/SKILL.md
+  ci-fixer/SKILL.md
 ~~~
 
 Then restart Codex if the skills do not appear immediately.
 
-Update all three skills later with:
+Update all four skills later with:
 
 ~~~bash
 git -C ~/.agents/skills pull
@@ -83,13 +100,14 @@ git -C ~/.agents/skills pull
 
 ### If `~/.agents/skills` already contains other skills
 
-Do not clone over an existing non-empty directory. In that case, keep this repository elsewhere and symlink its three skill directories:
+Do not clone over an existing non-empty directory. In that case, keep this repository elsewhere and symlink its four skill directories:
 
 ~~~bash
 git clone https://github.com/superkelvint/github-issue-worker.git ~/.codex/github-issue-worker
 ln -s ~/.codex/github-issue-worker/issue ~/.agents/skills/issue
 ln -s ~/.codex/github-issue-worker/verify ~/.agents/skills/verify
 ln -s ~/.codex/github-issue-worker/issue-followup ~/.agents/skills/issue-followup
+ln -s ~/.codex/github-issue-worker/ci-fixer ~/.agents/skills/ci-fixer
 ~~~
 
 If you previously installed an older copy of any of these skills, remove that old copy or symlink first so Codex does not discover duplicate skill names.

@@ -1,0 +1,3 @@
+interface:
+  display_name: "CI Fixer"
+  short_description: "Diagnose, repair, and verify broken GitHub Actions CI"
