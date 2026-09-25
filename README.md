@@ -1,6 +1,6 @@
 # GitHub Coding Agent Skills
 
-This repository contains four independent Codex/ChatGPT skills for GitHub engineering workflows.
+This repository contains five independent Codex/ChatGPT skills for GitHub engineering workflows.
 
 ## $issue
 
@@ -48,6 +48,19 @@ $ci-fixer fix and merge PR 470
 
 For SearchKernel, $ci-fixer fetches the current CTO workflow and repository agent rules before substantive repair or merge work and performs exact-head/false-green checks instead of treating a rerun or merge result as sufficient evidence.
 
+## $pr-auto
+
+Drive the open PR fleet to the furthest safe state it can reach: batch status discovery, update stale branches, fix bounded CI/code/conflict problems, review ready PRs, track adversarial-review evidence by exact head SHA, merge eligible PRs, reconcile linked issues, then repeat until no additional safe action remains.
+
+~~~text
+$pr-auto
+pr auto
+$pr-auto status
+$pr-auto 584
+~~~
+
+A bare `pr auto` is intentionally action-oriented. Use `pr auto status` for a read-only snapshot.
+
 ## Layout
 
 ~~~text
@@ -92,7 +105,7 @@ That produces the discovery layout directly:
 
 Then restart Codex if the skills do not appear immediately.
 
-Update all four skills later with:
+Update all five skills later with:
 
 ~~~bash
 git -C ~/.agents/skills pull
@@ -100,14 +113,14 @@ git -C ~/.agents/skills pull
 
 ### If `~/.agents/skills` already contains other skills
 
-Do not clone over an existing non-empty directory. In that case, keep this repository elsewhere and symlink its four skill directories:
+Do not clone over an existing non-empty directory. In that case, keep this repository elsewhere and symlink its five skill directories:
 
 ~~~bash
 git clone https://github.com/superkelvint/github-issue-worker.git ~/.codex/github-issue-worker
 ln -s ~/.codex/github-issue-worker/issue ~/.agents/skills/issue
 ln -s ~/.codex/github-issue-worker/verify ~/.agents/skills/verify
 ln -s ~/.codex/github-issue-worker/issue-followup ~/.agents/skills/issue-followup
-ln -s ~/.codex/github-issue-worker/ci-fixer ~/.agents/skills/ci-fixer
+ln -s ~/.codex/github-issue-worker/ci-fixer ~/.agents/skills/ci-fixer\nln -s ~/.codex/github-issue-worker/pr-auto ~/.agents/skills/pr-auto
 ~~~
 
 If you previously installed an older copy of any of these skills, remove that old copy or symlink first so Codex does not discover duplicate skill names.
