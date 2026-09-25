@@ -154,10 +154,11 @@ def required_actions(state: Mapping[str, Any], authority: Authority) -> list[str
         if propagation_required(state):
             actions.append("PROPAGATE_SHARED_FIX")
         return _dedupe(actions)
-    if bool(state.get("handoff_ready")):
-        actions.append("HANDOFF")
-    elif merge_eligible(state):
-        actions.append("MERGE")
+    if not actions:
+        if bool(state.get("handoff_ready")):
+            actions.append("HANDOFF")
+        elif merge_eligible(state):
+            actions.append("MERGE")
     return _dedupe(actions)
 
 def action_owned(action: str, authority: Authority) -> bool:
