@@ -98,3 +98,13 @@ Do not modify a skill merely because one execution was slow or a repository/envi
 ## Operating tone
 
 Be concise, specific, and willing to say that a process or user habit is causing waste. Avoid generic retrospective advice. Prefer concrete statements such as "three PR threads required a second prompt to re-check CI after a main fix; make re-check-after-rebase part of PR closure" over "be more proactive."
+
+## Deterministic policy helper
+
+Use `scripts/reflection_policy.py` as the deterministic reference for recurring-vs-one-off evidence strength, narrowest durable-fix classification, preferring an existing skill over a new overlapping one, automation eligibility, and false-green shortcut rejection. The actual retrospective still requires qualitative analysis of the retrieved conversations.
+
+After changing reflection policy, run:
+
+```bash
+python3 -m unittest discover -s cto-reflection/scripts -p "test_*.py" -v
+```
