@@ -11,7 +11,7 @@ A = "a" * 40
 B = "b" * 40
 
 def state(**kw):
-    obj = {"head_sha": A, "checks_head_sha": A, "required_checks_green": True, "mergeable": True, "acceptance_complete": True, "ordinary_review_complete": True}
+    obj = {"head_sha": A, "checks_head_sha": A, "required_checks_green": True, "mergeable": True, "acceptance_complete": True, "ordinary_review_complete": True, "merge_evidence_complete": True}
     obj.update(kw)
     return obj
 
@@ -23,6 +23,9 @@ class ControlPlanePolicyTests(unittest.TestCase):
         obj = state(head_sha=B, adversarial_review={"head_sha": A, "disposition": "VERIFIED"})
         self.assertEqual(p.review_requirement(obj, required=True, evidence_key="adversarial_review"), "DELTA")
         self.assertEqual(p.review_requirement(obj, required=True, evidence_key="adversarial_review", delta_reopens=True), "FULL")
+
+    def test_incomplete_merge_evidence_fails_closed(self):
+        self.assertFalse(p.merge_eligible(state(merge_evidence_complete=False)))
 
     def test_green_checks_on_old_head_do_not_merge(self):
         self.assertFalse(p.merge_eligible(state(head_sha=B)))
@@ -48,15 +51,18 @@ class ControlPlanePolicyTests(unittest.TestCase):
         self.assertEqual(result["owned_actions"], ["MERGE"])
 
     def test_merge_requires_reconciliation(self):
-        result = p.evaluate(state(merged=True, merge_reachable_from_main=False), p.authority_for("issue-fixer"))
+        result = p.evaluate(state(merged=True, merge_reachable_from_main=False, reconciliation_evidence_complete=True, linked_issue_state_correct=True, stale_labels_or_duplicate_work=False), p.authority_for("issue-fixer"))
         self.assertEqual(result["owned_actions"], ["RECONCILE_ISSUE"])
 
     def test_shared_fix_propagation_is_pr_auto_owned(self):
-        obj = state(merged=True, merge_reachable_from_main=True, shared_fix_landed=True, affected_sibling_prs=[581, 584], propagation_complete=False)
+        obj = state(merged=True, merge_reachable_from_main=True, reconciliation_evidence_complete=True, linked_issue_state_correct=True, stale_labels_or_duplicate_work=False, shared_fix_landed=True, affected_sibling_prs=[581, 584], propagation_complete=False)
         issue_result = p.evaluate(obj, p.authority_for("issue-fixer"))
         auto_result = p.evaluate(obj, p.authority_for("pr-auto"))
         self.assertIn("PROPAGATE_SHARED_FIX", issue_result["unowned_actions"])
         self.assertIn("PROPAGATE_SHARED_FIX", auto_result["owned_actions"])
+
+    def test_incomplete_reconciliation_evidence_fails_closed(self):
+        self.assertFalse(p.post_merge_reconciled(state(merged=True, merge_reachable_from_main=True)))
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
