@@ -234,4 +234,8 @@ After changing follow-up lifecycle behavior, run:
 
 ```bash
 python3 -m unittest discover -s issue-followup/scripts -p "test_*.py" -v
-```
+```\n\n## Shared closure control-plane
+
+Before handing the existing PR back or terminating, normalize the exact current head and evaluate `scripts/control_plane_policy.py issue-followup`. Use the shared policy for exact-head evidence freshness and role-scoped terminality; keep follow-up-specific claim and handoff rules in `scripts/followup_policy.py`.
+
+If an owned action remains, continue. If only an unowned review/merge action remains, hand the PR back through the normal follow-up boundary instead of silently broadening this workflow's authority.\n
