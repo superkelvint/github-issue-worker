@@ -34,6 +34,8 @@ on:
       - "plugins/github-coding-agent-skills/**"
       - ".agents/plugins/marketplace.json"
       - "tools/sync_marketplace_plugin.py"
+      - "tools/control_plane_policy.py"
+      - "tools/test_control_plane_policy.py"
       - ".github/workflows/pr-auto-policy.yml"
   workflow_dispatch:
 
