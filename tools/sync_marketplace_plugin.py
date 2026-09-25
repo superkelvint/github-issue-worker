@@ -53,7 +53,30 @@ def copy_skill(source: Path, destination: Path) -> None:
     shutil.copytree(source, destination, ignore=ignore)
 
 
+def sync_control_plane_copies() -> None:
+    content = SHARED_CONTROL_PLANE.read_bytes()
+    for skill_name in SHARED_CONTROL_PLANE_TARGETS:
+        target = ROOT / skill_name / "scripts" / "control_plane_policy.py"
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(content)
+
+
+def check_control_plane_copies() -> bool:
+    expected = SHARED_CONTROL_PLANE.read_bytes()
+    ok = True
+    for skill_name in SHARED_CONTROL_PLANE_TARGETS:
+        target = ROOT / skill_name / "scripts" / "control_plane_policy.py"
+        if not target.is_file() or target.read_bytes() != expected:
+            print(
+                f"shared control-plane drift: {target.relative_to(ROOT)}",
+                file=sys.stderr,
+            )
+            ok = False
+    return ok
+
+
 def sync() -> None:
+    sync_control_plane_copies()
     skills = discover_skills()
     if PLUGIN_SKILLS.exists():
         shutil.rmtree(PLUGIN_SKILLS)
