@@ -32,7 +32,7 @@ def action_mode(text: str) -> str:
     value = text.lower()
     if any(x in value for x in ["fix and merge", "merge when green", "finish this pr"]):
         return "CLOSURE"
-    if any(x in value for x in ["fix it", "get ci green", "move this pr forward", "repair"]):
+    if any(x in value for x in ["fix it", "fix ci", "get ci green", "get this pr green", "move this pr forward", "repair"]):
         return "REPAIR"
     return "INSPECT"
 
