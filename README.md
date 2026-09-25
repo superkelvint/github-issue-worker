@@ -227,7 +227,7 @@ git -C ~/.agents/skills pull
 
 ### If `~/.agents/skills` already contains other skills
 
-Do not clone over an existing non-empty directory. In that case, keep this repository elsewhere and symlink its eight skill directories:
+Do not clone over an existing non-empty directory. In that case, keep this repository elsewhere and symlink its nine skill directories:
 
 ~~~bash
 git clone https://github.com/superkelvint/github-issue-worker.git ~/.codex/github-issue-worker
