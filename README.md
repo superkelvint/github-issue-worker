@@ -1,6 +1,6 @@
 # GitHub Coding Agent Skills
 
-This repository contains six independent Codex/ChatGPT skills for GitHub engineering workflows.
+This repository contains seven independent Codex/ChatGPT skills for GitHub engineering workflows.
 
 ## $issue
 
@@ -27,6 +27,18 @@ gut check the tests for PR 584
 ~~~
 
 It works both before merge and when revisiting an already-merged issue.
+
+## $test-gut-check-batch
+
+Run the same coverage audit across **every open PR** in one fleet pass. It batches GitHub discovery, skips unchanged heads that already have a current SHA-bound audit record, audits substantive PRs, repairs bounded missing tests on writable PR branches, and continues past blocked/active PRs instead of stopping the whole run.
+
+~~~text
+$test-gut-check-batch
+gut check test coverage on all open PRs
+audit every open PR for missing tests and fix what you can
+~~~
+
+It never merges or approves PRs; its job is test inventory, gap detection, remediation, exact-head verification, and a compact fleet report.
 
 ## $verify
 
@@ -84,6 +96,9 @@ issue/
 test-gut-check/
   SKILL.md
   agents/openai.yaml
+test-gut-check-batch/
+  SKILL.md
+  agents/openai.yaml
 verify/
   SKILL.md
   agents/openai.yaml
@@ -118,6 +133,7 @@ That produces the discovery layout directly:
 ~/.agents/skills/
   issue/SKILL.md
   test-gut-check/SKILL.md
+  test-gut-check-batch/SKILL.md
   verify/SKILL.md
   issue-followup/SKILL.md
   ci-fixer/SKILL.md
@@ -126,7 +142,7 @@ That produces the discovery layout directly:
 
 Then restart Codex if the skills do not appear immediately.
 
-Update all six skills later with:
+Update all seven skills later with:
 
 ~~~bash
 git -C ~/.agents/skills pull
@@ -134,12 +150,13 @@ git -C ~/.agents/skills pull
 
 ### If `~/.agents/skills` already contains other skills
 
-Do not clone over an existing non-empty directory. In that case, keep this repository elsewhere and symlink its six skill directories:
+Do not clone over an existing non-empty directory. In that case, keep this repository elsewhere and symlink its seven skill directories:
 
 ~~~bash
 git clone https://github.com/superkelvint/github-issue-worker.git ~/.codex/github-issue-worker
 ln -s ~/.codex/github-issue-worker/issue ~/.agents/skills/issue
 ln -s ~/.codex/github-issue-worker/test-gut-check ~/.agents/skills/test-gut-check
+ln -s ~/.codex/github-issue-worker/test-gut-check-batch ~/.agents/skills/test-gut-check-batch
 ln -s ~/.codex/github-issue-worker/verify ~/.agents/skills/verify
 ln -s ~/.codex/github-issue-worker/issue-followup ~/.agents/skills/issue-followup
 ln -s ~/.codex/github-issue-worker/ci-fixer ~/.agents/skills/ci-fixer
