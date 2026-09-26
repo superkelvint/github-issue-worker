@@ -15,6 +15,7 @@ EXPECTED_NAMES = {
     "issue-fixer",
     "issue-followup",
     "pr-auto",
+    "pr-reconciliation",
     "test-gut-check",
     "test-gut-check-batch",
     "verify",

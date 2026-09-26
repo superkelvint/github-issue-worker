@@ -1,6 +1,6 @@
 # GitHub Coding Agent Skills
 
-This repository contains ten independent Codex/ChatGPT skills for GitHub engineering workflows.
+This repository contains eleven independent Codex/ChatGPT skills for GitHub engineering workflows.
 
 ## $issue
 
@@ -109,6 +109,18 @@ $pr-auto 584
 
 A bare `pr auto` is intentionally action-oriented. Use `pr auto status` for a read-only snapshot. PR Auto's deterministic policy helper is covered by `python3 pr-auto/scripts/test_pr_auto_policy.py`.
 
+## $pr-reconciliation
+
+Bring every open PR targeting `main` up to the latest `main` wherever GitHub can do so cleanly. It uses GitHub's native branch-update operation, includes drafts, continues past conflicts and permission/fork restrictions, and reports what was updated versus skipped.
+
+~~~text
+$pr-reconciliation
+reconcile all open PRs with main
+pull main into every open PR where possible
+~~~
+
+It never resolves conflicts, rebases, force-pushes, retargets, merges, or closes PRs. One blocked PR never stops the rest of the sweep.
+
 ## $cto-reflection
 
 Review recent SearchKernel/CTO conversations, normally the last 24 hours, and turn repeated friction into concrete process improvements. It refreshes the current CTO workflow and repository rules, inspects relevant skills, distinguishes tooling/workflow/skill/user-habit root causes, and challenges proposed shortcuts for false-green risk.
@@ -143,6 +155,7 @@ skills/
   issue-followup/
   ci-fixer/
   pr-auto/
+  pr-reconciliation/
   cto-reflection/
 tools/
   check_skill_layout.py
@@ -175,7 +188,7 @@ When editing or adding a skill, change only `skills/<name>/`. Run `python3 tools
 
 Do **not** clone this entire repository into `~/.agents/skills`. This repository is also a plugin/marketplace package. Putting the plugin root inside a user skill-discovery directory can expose the same skill once as a local skill and again through the installed marketplace plugin.
 
-Choose exactly one source for these ten skills in a given Codex/ChatGPT profile.
+Choose exactly one source for these eleven skills in a given Codex/ChatGPT profile.
 
 ### Option A: marketplace plugin
 
@@ -195,7 +208,7 @@ mkdir -p ~/.agents/skills
 Then expose only the actual skill directories:
 
 ~~~bash
-for skill in issue issue-fixer test-gut-check test-gut-check-batch coverage-risk verify issue-followup ci-fixer pr-auto cto-reflection; do
+for skill in issue issue-fixer test-gut-check test-gut-check-batch coverage-risk verify issue-followup ci-fixer pr-auto pr-reconciliation cto-reflection; do
   ln -sfn "$HOME/.codex/github-issue-worker/skills/$skill" "$HOME/.agents/skills/$skill"
 done
 ~~~
@@ -215,7 +228,7 @@ If this repository is currently cloned directly at `~/.agents/skills`, **move it
 ~~~bash
 mv ~/.agents/skills ~/.codex/github-issue-worker
 mkdir -p ~/.agents/skills
-for skill in issue issue-fixer test-gut-check test-gut-check-batch coverage-risk verify issue-followup ci-fixer pr-auto cto-reflection; do
+for skill in issue issue-fixer test-gut-check test-gut-check-batch coverage-risk verify issue-followup ci-fixer pr-auto pr-reconciliation cto-reflection; do
   ln -s "$HOME/.codex/github-issue-worker/skills/$skill" "$HOME/.agents/skills/$skill"
 done
 ~~~
@@ -237,6 +250,7 @@ python3 tools/check_skill_layout.py
 for dir in issue verify issue-followup ci-fixer pr-auto test-gut-check test-gut-check-batch coverage-risk cto-reflection; do
   python3 -m unittest discover -s "skills/$dir/scripts" -p 'test_*.py' -v
 done
+bash skills/pr-reconciliation/scripts/test-reconcile-open-prs.sh
 ~~~
 
-The suite currently covers issue queue/claim/worktree/release safety, draft PR verification, follow-up lifecycle, CI diagnosis/repair policy, PR Auto fleet policy, test gut-check policy, batch audit caching/mutation rules, coverage-risk inventory parsing, and CTO reflection recommendation guards.
+The suite currently covers issue queue/claim/worktree/release safety, draft PR verification, follow-up lifecycle, CI diagnosis/repair policy, PR Auto fleet policy, PR reconciliation best-effort behavior, test gut-check policy, batch audit caching/mutation rules, coverage-risk inventory parsing, and CTO reflection recommendation guards.
