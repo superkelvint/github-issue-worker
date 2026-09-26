@@ -1,3 +1,0 @@
-interface:
-  display_name: "Issue Follow-up"
-  short_description: "Work needs-followup issues on their existing PR and return them for CTO review"

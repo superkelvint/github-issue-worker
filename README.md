@@ -42,12 +42,12 @@ It works both before merge and when revisiting an already-merged issue.
 
 ## $test-gut-check-batch
 
-Run the same coverage audit across **every open PR** in one fleet pass. It batches GitHub discovery, skips unchanged heads that already have a current SHA-bound audit record, audits substantive PRs, repairs bounded missing tests on writable PR branches, and continues past blocked/active PRs instead of stopping the whole run.
+Run the same coverage audit across a selectable PR fleet. Open PRs are the default, and a rolling closed-PR window such as `closed:72h` is also supported. It batches GitHub discovery, skips unchanged heads that already have a current SHA-bound audit record, audits substantive PRs, repairs bounded missing tests on writable PR branches, and continues past blocked/active PRs instead of stopping the whole run.
 
 ~~~text
 $test-gut-check-batch
+$test-gut-check-batch closed:72h
 gut check test coverage on all open PRs
-audit every open PR for missing tests and fix what you can
 ~~~
 
 It never merges or approves PRs; its job is test inventory, gap detection, remediation, exact-head verification, and a compact fleet report.
@@ -123,65 +123,32 @@ It prefers the narrowest durable fix: improve an existing skill when that is eno
 
 ## Layout
 
+The repository has one canonical skill tree. The same `skills/` directory is used by local Codex discovery and by the ChatGPT plugin package; there is no generated mirror.
+
 ~~~text
-issue/
-  SKILL.md
-  agents/openai.yaml
-  scripts/find_issues.py
-  scripts/claim_issue.py
-  scripts/create_worktree.py
-  scripts/release_issue.py
-  scripts/test_issue_helpers.py
-issue-fixer/
-  SKILL.md
-  agents/openai.yaml
-  references/review-gates.md
-test-gut-check/
-  SKILL.md
-  agents/openai.yaml
-  scripts/gut_check_policy.py
-  scripts/test_gut_check_policy.py
-test-gut-check-batch/
-  SKILL.md
-  agents/openai.yaml
-  scripts/batch_gut_check_policy.py
-  scripts/test_batch_gut_check_policy.py
-coverage-risk/
-  SKILL.md
-  agents/openai.yaml
-  references/searchkernel.md
-  scripts/coverage_risk.py
-  scripts/test_coverage_risk.py
-verify/
-  SKILL.md
-  agents/openai.yaml
-  scripts/verify_policy.py
-  scripts/test_verify_policy.py
-issue-followup/
-  SKILL.md
-  agents/openai.yaml
-  scripts/followup_policy.py
-  scripts/test_followup_policy.py
-ci-fixer/
-  SKILL.md
-  agents/openai.yaml
-  scripts/ci_fixer_policy.py
-  scripts/test_ci_fixer_policy.py
-  references/searchkernel-patterns.md
-pr-auto/
-  SKILL.md
-  agents/openai.yaml
-  scripts/pr_auto_policy.py
-  scripts/test_pr_auto_policy.py
-  references/searchkernel.md
-cto-reflection/
-  SKILL.md
-  agents/openai.yaml
-  scripts/reflection_policy.py
-  scripts/test_reflection_policy.py
-  references/reflection-rubric.md
-  references/report-template.md
+plugin.json
+skills/
+  issue/
+    SKILL.md
+    agents/openai.yaml
+    scripts/
+  issue-fixer/
+    SKILL.md
+    agents/openai.yaml
+    references/
+  test-gut-check/
+  test-gut-check-batch/
+  coverage-risk/
+  verify/
+  issue-followup/
+  ci-fixer/
+  pr-auto/
+  cto-reflection/
+tools/
+  check_skill_layout.py
 ~~~
+
+CI rejects any second/noncanonical `SKILL.md` entrypoint so cloning this repository into a recursively scanned skills directory cannot create duplicate skill names.
 
 ## GitHub access fallback
 
@@ -189,7 +156,7 @@ The skills prefer a runtime-native GitHub connector when it is actually exposed 
 
 ## ChatGPT install (GitHub-synced)
 
-This repository is also a ChatGPT plugin marketplace. The root skill directories remain the source of truth; the installable plugin mirror under `plugins/github-coding-agent-skills/skills/` is generated from them and checked for drift in CI.
+This repository is also a ChatGPT plugin marketplace. The repository root is the plugin package and `skills/` is the single source of truth used by both the marketplace and local Codex discovery.
 
 To connect it once as a workspace admin:
 
@@ -202,13 +169,7 @@ To connect it once as a workspace admin:
 
 ChatGPT then checks the GitHub marketplace for updates daily. Use **Marketplaces > GitHub Coding Agent Skills > Sync now** when you want a merged skill change immediately.
 
-After editing or adding a root-level skill, refresh the generated plugin mirror before committing:
-
-~~~bash
-python3 tools/sync_marketplace_plugin.py
-~~~
-
-CI runs the same tool with `--check` and fails if the GitHub-synced package has drifted from the root skills.
+When editing or adding a skill, change only `skills/<name>/`. Run `python3 tools/check_skill_layout.py` before committing; CI runs the same guard and rejects duplicate or noncanonical skill entrypoints.
 
 ## Local install
 
@@ -218,20 +179,21 @@ The simplest installation is to clone this repository directly as your Codex use
 git clone https://github.com/superkelvint/github-issue-worker.git ~/.agents/skills
 ~~~
 
-That produces the discovery layout directly:
+Codex recursively discovers the single canonical tree:
 
 ~~~text
 ~/.agents/skills/
-  issue/SKILL.md
-  issue-fixer/SKILL.md
-  test-gut-check/SKILL.md
-  test-gut-check-batch/SKILL.md
-  coverage-risk/SKILL.md
-  verify/SKILL.md
-  issue-followup/SKILL.md
-  ci-fixer/SKILL.md
-  pr-auto/SKILL.md
-  cto-reflection/SKILL.md
+  skills/
+    issue/SKILL.md
+    issue-fixer/SKILL.md
+    test-gut-check/SKILL.md
+    test-gut-check-batch/SKILL.md
+    coverage-risk/SKILL.md
+    verify/SKILL.md
+    issue-followup/SKILL.md
+    ci-fixer/SKILL.md
+    pr-auto/SKILL.md
+    cto-reflection/SKILL.md
 ~~~
 
 Then restart Codex if the skills do not appear immediately.
@@ -244,32 +206,32 @@ git -C ~/.agents/skills pull
 
 ### If `~/.agents/skills` already contains other skills
 
-Do not clone over an existing non-empty directory. In that case, keep this repository elsewhere and symlink its ten skill directories:
+Do not clone over an existing non-empty directory. In that case, keep this repository elsewhere and symlink its canonical skill directories:
 
 ~~~bash
 git clone https://github.com/superkelvint/github-issue-worker.git ~/.codex/github-issue-worker
-ln -s ~/.codex/github-issue-worker/issue ~/.agents/skills/issue
-ln -s ~/.codex/github-issue-worker/issue-fixer ~/.agents/skills/issue-fixer
-ln -s ~/.codex/github-issue-worker/test-gut-check ~/.agents/skills/test-gut-check
-ln -s ~/.codex/github-issue-worker/test-gut-check-batch ~/.agents/skills/test-gut-check-batch
-ln -s ~/.codex/github-issue-worker/coverage-risk ~/.agents/skills/coverage-risk
-ln -s ~/.codex/github-issue-worker/verify ~/.agents/skills/verify
-ln -s ~/.codex/github-issue-worker/issue-followup ~/.agents/skills/issue-followup
-ln -s ~/.codex/github-issue-worker/ci-fixer ~/.agents/skills/ci-fixer
-ln -s ~/.codex/github-issue-worker/pr-auto ~/.agents/skills/pr-auto
-ln -s ~/.codex/github-issue-worker/cto-reflection ~/.agents/skills/cto-reflection
+ln -s ~/.codex/github-issue-worker/skills/issue ~/.agents/skills/issue
+ln -s ~/.codex/github-issue-worker/skills/issue-fixer ~/.agents/skills/issue-fixer
+ln -s ~/.codex/github-issue-worker/skills/test-gut-check ~/.agents/skills/test-gut-check
+ln -s ~/.codex/github-issue-worker/skills/test-gut-check-batch ~/.agents/skills/test-gut-check-batch
+ln -s ~/.codex/github-issue-worker/skills/coverage-risk ~/.agents/skills/coverage-risk
+ln -s ~/.codex/github-issue-worker/skills/verify ~/.agents/skills/verify
+ln -s ~/.codex/github-issue-worker/skills/issue-followup ~/.agents/skills/issue-followup
+ln -s ~/.codex/github-issue-worker/skills/ci-fixer ~/.agents/skills/ci-fixer
+ln -s ~/.codex/github-issue-worker/skills/pr-auto ~/.agents/skills/pr-auto
+ln -s ~/.codex/github-issue-worker/skills/cto-reflection ~/.agents/skills/cto-reflection
 ~~~
 
 If you previously installed an older copy of any of these skills, remove that old copy or symlink first so Codex does not discover duplicate skill names.
-
 
 ## Test all skills
 
 The repository's deterministic skill helpers are covered with standard-library Python unit tests. Run the full suite with:
 
 ~~~bash
+python3 tools/check_skill_layout.py
 for dir in issue verify issue-followup ci-fixer pr-auto test-gut-check test-gut-check-batch coverage-risk cto-reflection; do
-  python3 -m unittest discover -s "$dir/scripts" -p 'test_*.py' -v
+  python3 -m unittest discover -s "skills/$dir/scripts" -p 'test_*.py' -v
 done
 ~~~
 

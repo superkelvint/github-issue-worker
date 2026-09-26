@@ -26,7 +26,8 @@ class CiFixerPolicyTests(unittest.TestCase):
 
     def test_action_modes_do_not_mutate_inspect_request(self):
         self.assertEqual(p.action_mode("what is wrong with PR 5"), "INSPECT")
-        self.assertEqual(p.action_mode("fix it"), "REPAIR")\n        self.assertEqual(p.action_mode("fix CI on PR 461"), "REPAIR")
+        self.assertEqual(p.action_mode("fix it"), "REPAIR")
+        self.assertEqual(p.action_mode("fix CI on PR 461"), "REPAIR")
         self.assertEqual(p.action_mode("fix and merge PR 5"), "CLOSURE")
 
     def test_only_unexplained_failed_jobs_need_logs(self):

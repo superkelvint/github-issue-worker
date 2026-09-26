@@ -1,3 +1,0 @@
-interface:
-  display_name: "Issue Worker"
-  short_description: "Claim one GitHub issue, fix it test-first, and open a PR"

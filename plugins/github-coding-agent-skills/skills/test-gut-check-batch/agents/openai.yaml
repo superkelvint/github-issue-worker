@@ -1,3 +1,0 @@
-interface:
-  display_name: "Batch Test Gut Check"
-  short_description: "Audit and repair test coverage across every open PR"

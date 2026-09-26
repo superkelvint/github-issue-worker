@@ -1,3 +1,0 @@
-interface:
-  display_name: "PR Auto"
-  short_description: "Fix-forward PR fleet management with adversarial and architecture gates"
