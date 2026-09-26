@@ -19,7 +19,7 @@ EXPECTED_NAMES = {
     "test-gut-check-batch",
     "verify",
 }
-NAME_RE = re.compile(r"^name:\\s*([^\\s#]+)\\s*$")
+NAME_RE = re.compile(r"^name:\s*([^\s#]+)\s*$")
 
 
 def skill_name(path: Path) -> str | None:
