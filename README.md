@@ -148,7 +148,7 @@ tools/
   check_skill_layout.py
 ~~~
 
-CI rejects any second/noncanonical `SKILL.md` entrypoint so cloning this repository into a recursively scanned skills directory cannot create duplicate skill names.
+CI rejects any second/noncanonical `SKILL.md` entrypoint inside the repository. Runtime duplicates can still occur if the same skills are enabled from both this local checkout and an installed marketplace plugin, so the installation modes below are intentionally mutually exclusive.
 
 ## GitHub access fallback
 
@@ -171,58 +171,62 @@ ChatGPT then checks the GitHub marketplace for updates daily. Use **Marketplaces
 
 When editing or adding a skill, change only `skills/<name>/`. Run `python3 tools/check_skill_layout.py` before committing; CI runs the same guard and rejects duplicate or noncanonical skill entrypoints.
 
-## Local install
+## Local Codex install
 
-The simplest installation is to clone this repository directly as your Codex user skills directory:
+Do **not** clone this entire repository into `~/.agents/skills`. This repository is also a plugin/marketplace package. Putting the plugin root inside a user skill-discovery directory can expose the same skill once as a local skill and again through the installed marketplace plugin.
 
-~~~bash
-git clone https://github.com/superkelvint/github-issue-worker.git ~/.agents/skills
-~~~
+Choose exactly one source for these ten skills in a given Codex/ChatGPT profile.
 
-Codex recursively discovers the single canonical tree:
+### Option A: marketplace plugin
 
-~~~text
-~/.agents/skills/
-  skills/
-    issue/SKILL.md
-    issue-fixer/SKILL.md
-    test-gut-check/SKILL.md
-    test-gut-check-batch/SKILL.md
-    coverage-risk/SKILL.md
-    verify/SKILL.md
-    issue-followup/SKILL.md
-    ci-fixer/SKILL.md
-    pr-auto/SKILL.md
-    cto-reflection/SKILL.md
-~~~
+Use the marketplace/plugin installation described above and do not create local copies or symlinks for these same ten skills under `~/.agents/skills`.
 
-Then restart Codex if the skills do not appear immediately.
+### Option B: local-development skills
 
-Update all ten skills later with:
+Use this when you want `git pull` to update the skills immediately while developing them. The marketplace plugin copy must not also be enabled in the same client/profile.
 
-~~~bash
-git -C ~/.agents/skills pull
-~~~
-
-### If `~/.agents/skills` already contains other skills
-
-Do not clone over an existing non-empty directory. In that case, keep this repository elsewhere and symlink its canonical skill directories:
+Clone the repository outside every skill-discovery directory:
 
 ~~~bash
 git clone https://github.com/superkelvint/github-issue-worker.git ~/.codex/github-issue-worker
-ln -s ~/.codex/github-issue-worker/skills/issue ~/.agents/skills/issue
-ln -s ~/.codex/github-issue-worker/skills/issue-fixer ~/.agents/skills/issue-fixer
-ln -s ~/.codex/github-issue-worker/skills/test-gut-check ~/.agents/skills/test-gut-check
-ln -s ~/.codex/github-issue-worker/skills/test-gut-check-batch ~/.agents/skills/test-gut-check-batch
-ln -s ~/.codex/github-issue-worker/skills/coverage-risk ~/.agents/skills/coverage-risk
-ln -s ~/.codex/github-issue-worker/skills/verify ~/.agents/skills/verify
-ln -s ~/.codex/github-issue-worker/skills/issue-followup ~/.agents/skills/issue-followup
-ln -s ~/.codex/github-issue-worker/skills/ci-fixer ~/.agents/skills/ci-fixer
-ln -s ~/.codex/github-issue-worker/skills/pr-auto ~/.agents/skills/pr-auto
-ln -s ~/.codex/github-issue-worker/skills/cto-reflection ~/.agents/skills/cto-reflection
+mkdir -p ~/.agents/skills
 ~~~
 
-If you previously installed an older copy of any of these skills, remove that old copy or symlink first so Codex does not discover duplicate skill names.
+Then expose only the actual skill directories:
+
+~~~bash
+for skill in issue issue-fixer test-gut-check test-gut-check-batch coverage-risk verify issue-followup ci-fixer pr-auto cto-reflection; do
+  ln -sfn "$HOME/.codex/github-issue-worker/skills/$skill" "$HOME/.agents/skills/$skill"
+done
+~~~
+
+Update later with:
+
+~~~bash
+git -C ~/.codex/github-issue-worker pull
+~~~
+
+The repository root itself should never be a descendant of `~/.agents/skills`; only individual skill directories belong there.
+
+### Migrating an existing clone safely
+
+If this repository is currently cloned directly at `~/.agents/skills`, **move it; do not delete it**:
+
+~~~bash
+mv ~/.agents/skills ~/.codex/github-issue-worker
+mkdir -p ~/.agents/skills
+for skill in issue issue-fixer test-gut-check test-gut-check-batch coverage-risk verify issue-followup ci-fixer pr-auto cto-reflection; do
+  ln -s "$HOME/.codex/github-issue-worker/skills/$skill" "$HOME/.agents/skills/$skill"
+done
+~~~
+
+Before using local-development mode, make sure an installed/cached `github-coding-agent-skills` marketplace plugin is not also active in that same Codex/ChatGPT profile. Running both sources is expected to show duplicate skill names.
+
+To diagnose where copies are coming from:
+
+~~~bash
+python3 ~/.codex/github-issue-worker/tools/diagnose_skill_sources.py
+~~~
 
 ## Test all skills
 
