@@ -6,7 +6,7 @@ on:
       - "skills/**"
       - "plugin.json"
       - ".agents/plugins/marketplace.json"
-      - "tools/check_skill_layout.py"
+      - "tools/*.py"
       - ".github/workflows/pr-auto-policy.yml"
   push:
     branches:
@@ -15,7 +15,7 @@ on:
       - "skills/**"
       - "plugin.json"
       - ".agents/plugins/marketplace.json"
-      - "tools/check_skill_layout.py"
+      - "tools/*.py"
       - ".github/workflows/pr-auto-policy.yml"
   workflow_dispatch:
 
@@ -39,6 +39,9 @@ jobs:
 
       - name: Verify single canonical skill tree
         run: python3 tools/check_skill_layout.py
+
+      - name: Check skill source diagnostic
+        run: python3 -m py_compile tools/diagnose_skill_sources.py
 
       - name: Run all deterministic skill tests
         shell: bash
