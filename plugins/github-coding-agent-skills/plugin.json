@@ -1,11 +1,8 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "github-coding-agent-skills",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "Reusable GitHub engineering workflow skills for issue work, PR verification, CI repair, test coverage, and CTO review.",
-  "author": {
-    "name": "superkelvint"
-  },
   "repository": "https://github.com/superkelvint/github-issue-worker",
   "keywords": [
     "github",

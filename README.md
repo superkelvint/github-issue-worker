@@ -135,37 +135,43 @@ It prefers the narrowest durable fix: improve an existing skill when that is eno
 
 ## Layout
 
-The repository is a marketplace root with one canonical plugin package. All eleven skills live only under `plugins/github-coding-agent-skills/skills/`; there is no root-level skill tree or generated mirror.
+This repository intentionally uses the same mirrored marketplace layout that was known to sync successfully at commit `18a5bf05aba8b722970e18d653508a724fde204f`.
+
+Root-level skill directories are the source of truth. The installable ChatGPT plugin under `plugins/github-coding-agent-skills/` contains a generated mirror of those skills.
 
 ~~~text
 .agents/
   plugins/
     marketplace.json
+issue/
+issue-fixer/
+issue-followup/
+verify/
+ci-fixer/
+pr-auto/
+pr-reconciliation/
+test-gut-check/
+test-gut-check-batch/
+coverage-risk/
+cto-reflection/
 plugins/
   github-coding-agent-skills/
     plugin.json
-    .codex-plugin/
-      plugin.json
     skills/
-      issue/
-        SKILL.md
-        agents/openai.yaml
-        scripts/
-      issue-fixer/
-      test-gut-check/
-      test-gut-check-batch/
-      coverage-risk/
-      verify/
-      issue-followup/
-      ci-fixer/
-      pr-auto/
-      pr-reconciliation/
-      cto-reflection/
+      <generated mirrors of the root-level skills>
 tools/
-  check_skill_layout.py
+  sync_marketplace_plugin.py
 ~~~
 
-CI rejects any second/noncanonical `SKILL.md` entrypoint inside the repository and rejects canonical skills whose `agents/openai.yaml` is missing `interface.display_name` or `interface.short_description`. Runtime duplicates can still occur if the same skills are enabled from both this local checkout and an installed marketplace plugin, so the installation modes below are intentionally mutually exclusive.
+The marketplace entry points to `./plugins/github-coding-agent-skills`. Do not point it at `./`.
+
+After editing or adding a root-level skill, refresh the plugin mirror before committing:
+
+~~~bash
+python3 tools/sync_marketplace_plugin.py
+~~~
+
+CI runs the same tool with `--check` and fails if the committed marketplace mirror drifts from the root skills.
 
 ## GitHub access fallback
 
@@ -173,7 +179,7 @@ The skills prefer a runtime-native GitHub connector when it is actually exposed 
 
 ## ChatGPT install (GitHub-synced)
 
-This repository is a ChatGPT plugin marketplace. `.agents/plugins/marketplace.json` points to `./plugins/github-coding-agent-skills`, which is the plugin root; its `skills/` directory is the single source of truth.
+This repository is a ChatGPT plugin marketplace. `.agents/plugins/marketplace.json` points to `./plugins/github-coding-agent-skills`. Root-level skill directories are the source of truth; `plugins/github-coding-agent-skills/skills/` is a generated mirror checked for drift in CI.
 
 To connect it once as a workspace admin:
 
@@ -186,7 +192,7 @@ To connect it once as a workspace admin:
 
 ChatGPT then checks the GitHub marketplace for updates daily. Use **Marketplaces > GitHub Coding Agent Skills > Sync now** when you want a merged skill change immediately.
 
-When editing or adding a skill, change only `plugins/github-coding-agent-skills/skills/<name>/`. Run `python3 tools/check_skill_layout.py` before committing; CI runs the same guard and rejects duplicate or noncanonical skill entrypoints plus incomplete required UI metadata.
+When editing or adding a skill, change the root-level `<name>/` directory, then run `python3 tools/sync_marketplace_plugin.py` before committing. CI checks that the mirror is current.
 
 ## Local Codex install
 
@@ -213,7 +219,7 @@ Then expose only the actual skill directories:
 
 ~~~bash
 for skill in issue issue-fixer test-gut-check test-gut-check-batch coverage-risk verify issue-followup ci-fixer pr-auto pr-reconciliation cto-reflection; do
-  ln -sfn "$HOME/.codex/github-issue-worker/plugins/github-coding-agent-skills/skills/$skill" "$HOME/.agents/skills/$skill"
+  ln -sfn "$HOME/.codex/github-issue-worker/$skill" "$HOME/.agents/skills/$skill"
 done
 ~~~
 
@@ -233,7 +239,7 @@ If this repository is currently cloned directly at `~/.agents/skills`, **move it
 mv ~/.agents/skills ~/.codex/github-issue-worker
 mkdir -p ~/.agents/skills
 for skill in issue issue-fixer test-gut-check test-gut-check-batch coverage-risk verify issue-followup ci-fixer pr-auto pr-reconciliation cto-reflection; do
-  ln -s "$HOME/.codex/github-issue-worker/plugins/github-coding-agent-skills/skills/$skill" "$HOME/.agents/skills/$skill"
+  ln -s "$HOME/.codex/github-issue-worker/$skill" "$HOME/.agents/skills/$skill"
 done
 ~~~
 
@@ -250,12 +256,11 @@ python3 ~/.codex/github-issue-worker/tools/diagnose_skill_sources.py
 The repository's deterministic skill helpers are covered with standard-library Python unit tests. Run the full suite with:
 
 ~~~bash
-python3 tools/check_skill_layout.py
-python3 -m unittest discover -s tools -p 'test_*.py' -v
+python3 tools/sync_marketplace_plugin.py --check
 for dir in issue verify issue-followup ci-fixer pr-auto test-gut-check test-gut-check-batch coverage-risk cto-reflection; do
-  python3 -m unittest discover -s "plugins/github-coding-agent-skills/skills/$dir/scripts" -p 'test_*.py' -v
+  python3 -m unittest discover -s "$dir/scripts" -p 'test_*.py' -v
 done
-bash plugins/github-coding-agent-skills/skills/pr-reconciliation/scripts/test-reconcile-open-prs.sh
+bash pr-reconciliation/scripts/test-reconcile-open-prs.sh
 ~~~
 
-The suite currently covers marketplace/layout metadata validation, issue queue/claim/worktree/release safety, draft PR verification, follow-up lifecycle, CI diagnosis/repair policy, PR Auto fleet policy, PR reconciliation best-effort behavior, test gut-check policy, batch audit caching/mutation rules, coverage-risk inventory parsing, and CTO reflection recommendation guards.
+The suite covers marketplace-mirror drift plus issue queue/claim/worktree/release safety, draft PR verification, follow-up lifecycle, CI diagnosis/repair policy, PR Auto fleet policy, PR reconciliation best-effort behavior, test gut-check policy, batch audit caching/mutation rules, coverage-risk inventory parsing, and CTO reflection recommendation guards.
