@@ -161,7 +161,7 @@ tools/
   check_skill_layout.py
 ~~~
 
-CI rejects any second/noncanonical `SKILL.md` entrypoint inside the repository. Runtime duplicates can still occur if the same skills are enabled from both this local checkout and an installed marketplace plugin, so the installation modes below are intentionally mutually exclusive.
+CI rejects any second/noncanonical `SKILL.md` entrypoint inside the repository and rejects canonical skills whose `agents/openai.yaml` is missing `interface.display_name` or `interface.short_description`. Runtime duplicates can still occur if the same skills are enabled from both this local checkout and an installed marketplace plugin, so the installation modes below are intentionally mutually exclusive.
 
 ## GitHub access fallback
 
@@ -182,7 +182,7 @@ To connect it once as a workspace admin:
 
 ChatGPT then checks the GitHub marketplace for updates daily. Use **Marketplaces > GitHub Coding Agent Skills > Sync now** when you want a merged skill change immediately.
 
-When editing or adding a skill, change only `skills/<name>/`. Run `python3 tools/check_skill_layout.py` before committing; CI runs the same guard and rejects duplicate or noncanonical skill entrypoints.
+When editing or adding a skill, change only `skills/<name>/`. Run `python3 tools/check_skill_layout.py` before committing; CI runs the same guard and rejects duplicate or noncanonical skill entrypoints plus incomplete required UI metadata.
 
 ## Local Codex install
 
@@ -192,7 +192,7 @@ Choose exactly one source for these eleven skills in a given Codex/ChatGPT profi
 
 ### Option A: marketplace plugin
 
-Use the marketplace/plugin installation described above and do not create local copies or symlinks for these same ten skills under `~/.agents/skills`.
+Use the marketplace/plugin installation described above and do not create local copies or symlinks for these same eleven skills under `~/.agents/skills`.
 
 ### Option B: local-development skills
 
@@ -247,10 +247,11 @@ The repository's deterministic skill helpers are covered with standard-library P
 
 ~~~bash
 python3 tools/check_skill_layout.py
+python3 -m unittest discover -s tools -p 'test_*.py' -v
 for dir in issue verify issue-followup ci-fixer pr-auto test-gut-check test-gut-check-batch coverage-risk cto-reflection; do
   python3 -m unittest discover -s "skills/$dir/scripts" -p 'test_*.py' -v
 done
 bash skills/pr-reconciliation/scripts/test-reconcile-open-prs.sh
 ~~~
 
-The suite currently covers issue queue/claim/worktree/release safety, draft PR verification, follow-up lifecycle, CI diagnosis/repair policy, PR Auto fleet policy, PR reconciliation best-effort behavior, test gut-check policy, batch audit caching/mutation rules, coverage-risk inventory parsing, and CTO reflection recommendation guards.
+The suite currently covers marketplace/layout metadata validation, issue queue/claim/worktree/release safety, draft PR verification, follow-up lifecycle, CI diagnosis/repair policy, PR Auto fleet policy, PR reconciliation best-effort behavior, test gut-check policy, batch audit caching/mutation rules, coverage-risk inventory parsing, and CTO reflection recommendation guards.
