@@ -54,3 +54,4 @@ jobs:
             echo "==> $dir"
             python3 -m unittest discover -s "skills/$dir/scripts" -p "test_*.py" -v
           done
+          bash skills/pr-reconciliation/scripts/test-reconcile-open-prs.sh
