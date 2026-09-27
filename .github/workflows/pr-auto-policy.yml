@@ -3,20 +3,20 @@ name: Skill policy tests
 on:
   pull_request:
     paths:
-      - "skills/**"
-      - "plugin.json"
+      - "plugins/github-coding-agent-skills/**"
       - ".agents/plugins/marketplace.json"
       - "tools/*.py"
       - ".github/workflows/pr-auto-policy.yml"
+      - "README.md"
   push:
     branches:
       - main
     paths:
-      - "skills/**"
-      - "plugin.json"
+      - "plugins/github-coding-agent-skills/**"
       - ".agents/plugins/marketplace.json"
       - "tools/*.py"
       - ".github/workflows/pr-auto-policy.yml"
+      - "README.md"
   workflow_dispatch:
 
 permissions:
@@ -37,7 +37,7 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Verify single canonical skill tree
+      - name: Verify canonical marketplace and plugin layout
         run: python3 tools/check_skill_layout.py
 
       - name: Test skill layout validator
@@ -50,8 +50,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          skill_root="plugins/github-coding-agent-skills/skills"
           for dir in issue verify issue-followup ci-fixer pr-auto test-gut-check test-gut-check-batch coverage-risk cto-reflection; do
             echo "==> $dir"
-            python3 -m unittest discover -s "skills/$dir/scripts" -p "test_*.py" -v
+            python3 -m unittest discover -s "$skill_root/$dir/scripts" -p "test_*.py" -v
           done
-          bash skills/pr-reconciliation/scripts/test-reconcile-open-prs.sh
+          bash "$skill_root/pr-reconciliation/scripts/test-reconcile-open-prs.sh"

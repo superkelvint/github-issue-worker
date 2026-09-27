@@ -135,28 +135,32 @@ It prefers the narrowest durable fix: improve an existing skill when that is eno
 
 ## Layout
 
-The repository has one canonical skill tree. The same `skills/` directory is used by local Codex discovery and by the ChatGPT plugin package; there is no generated mirror.
+The repository is a marketplace root with one canonical plugin package. All eleven skills live only under `plugins/github-coding-agent-skills/skills/`; there is no root-level skill tree or generated mirror.
 
 ~~~text
-plugin.json
-skills/
-  issue/
-    SKILL.md
-    agents/openai.yaml
-    scripts/
-  issue-fixer/
-    SKILL.md
-    agents/openai.yaml
-    references/
-  test-gut-check/
-  test-gut-check-batch/
-  coverage-risk/
-  verify/
-  issue-followup/
-  ci-fixer/
-  pr-auto/
-  pr-reconciliation/
-  cto-reflection/
+.agents/
+  plugins/
+    marketplace.json
+plugins/
+  github-coding-agent-skills/
+    plugin.json
+    .codex-plugin/
+      plugin.json
+    skills/
+      issue/
+        SKILL.md
+        agents/openai.yaml
+        scripts/
+      issue-fixer/
+      test-gut-check/
+      test-gut-check-batch/
+      coverage-risk/
+      verify/
+      issue-followup/
+      ci-fixer/
+      pr-auto/
+      pr-reconciliation/
+      cto-reflection/
 tools/
   check_skill_layout.py
 ~~~
@@ -169,7 +173,7 @@ The skills prefer a runtime-native GitHub connector when it is actually exposed 
 
 ## ChatGPT install (GitHub-synced)
 
-This repository is also a ChatGPT plugin marketplace. The repository root is the plugin package and `skills/` is the single source of truth used by both the marketplace and local Codex discovery.
+This repository is a ChatGPT plugin marketplace. `.agents/plugins/marketplace.json` points to `./plugins/github-coding-agent-skills`, which is the plugin root; its `skills/` directory is the single source of truth.
 
 To connect it once as a workspace admin:
 
@@ -182,7 +186,7 @@ To connect it once as a workspace admin:
 
 ChatGPT then checks the GitHub marketplace for updates daily. Use **Marketplaces > GitHub Coding Agent Skills > Sync now** when you want a merged skill change immediately.
 
-When editing or adding a skill, change only `skills/<name>/`. Run `python3 tools/check_skill_layout.py` before committing; CI runs the same guard and rejects duplicate or noncanonical skill entrypoints plus incomplete required UI metadata.
+When editing or adding a skill, change only `plugins/github-coding-agent-skills/skills/<name>/`. Run `python3 tools/check_skill_layout.py` before committing; CI runs the same guard and rejects duplicate or noncanonical skill entrypoints plus incomplete required UI metadata.
 
 ## Local Codex install
 
@@ -209,7 +213,7 @@ Then expose only the actual skill directories:
 
 ~~~bash
 for skill in issue issue-fixer test-gut-check test-gut-check-batch coverage-risk verify issue-followup ci-fixer pr-auto pr-reconciliation cto-reflection; do
-  ln -sfn "$HOME/.codex/github-issue-worker/skills/$skill" "$HOME/.agents/skills/$skill"
+  ln -sfn "$HOME/.codex/github-issue-worker/plugins/github-coding-agent-skills/skills/$skill" "$HOME/.agents/skills/$skill"
 done
 ~~~
 
@@ -229,7 +233,7 @@ If this repository is currently cloned directly at `~/.agents/skills`, **move it
 mv ~/.agents/skills ~/.codex/github-issue-worker
 mkdir -p ~/.agents/skills
 for skill in issue issue-fixer test-gut-check test-gut-check-batch coverage-risk verify issue-followup ci-fixer pr-auto pr-reconciliation cto-reflection; do
-  ln -s "$HOME/.codex/github-issue-worker/skills/$skill" "$HOME/.agents/skills/$skill"
+  ln -s "$HOME/.codex/github-issue-worker/plugins/github-coding-agent-skills/skills/$skill" "$HOME/.agents/skills/$skill"
 done
 ~~~
 
@@ -249,9 +253,9 @@ The repository's deterministic skill helpers are covered with standard-library P
 python3 tools/check_skill_layout.py
 python3 -m unittest discover -s tools -p 'test_*.py' -v
 for dir in issue verify issue-followup ci-fixer pr-auto test-gut-check test-gut-check-batch coverage-risk cto-reflection; do
-  python3 -m unittest discover -s "skills/$dir/scripts" -p 'test_*.py' -v
+  python3 -m unittest discover -s "plugins/github-coding-agent-skills/skills/$dir/scripts" -p 'test_*.py' -v
 done
-bash skills/pr-reconciliation/scripts/test-reconcile-open-prs.sh
+bash plugins/github-coding-agent-skills/skills/pr-reconciliation/scripts/test-reconcile-open-prs.sh
 ~~~
 
 The suite currently covers marketplace/layout metadata validation, issue queue/claim/worktree/release safety, draft PR verification, follow-up lifecycle, CI diagnosis/repair policy, PR Auto fleet policy, PR reconciliation best-effort behavior, test gut-check policy, batch audit caching/mutation rules, coverage-risk inventory parsing, and CTO reflection recommendation guards.

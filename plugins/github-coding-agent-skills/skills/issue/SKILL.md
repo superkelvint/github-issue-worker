@@ -1,6 +1,6 @@
 ---
 name: issue
-description: Autonomously select, claim, implement, verify, and submit one GitHub issue as a pull request, optionally filtered by keyword, area, type, or priority. Use when asked to pick unclaimed work, work a named issue, or run an issue-to-PR workflow. Discovers normal work only from the canonical status:ready queue, orders by priority:p0 through priority:p3, claims with the race-safe codex/issue-<number> branch plus status:in-progress, uses a dedicated worktree, requires regression-test-first fixes, performs focused verification, and hands off a labeled PR without auto-merging.
+description: Autonomously select, claim, implement, verify, and submit one GitHub issue as a pull request, optionally filtered by keyword, area, type, or priority. Use when asked to pick unclaimed work, work a named issue, or run an issue-to-PR workflow. Discovers normal work only from the canonical status:ready queue, orders by priority:p0 through priority:p3, claims with the race-safe codex/issue-NUMBER branch plus status:in-progress, uses a dedicated worktree, requires regression-test-first fixes, performs focused verification, and hands off a labeled PR without auto-merging.
 ---
 
 # GitHub Issue Worker
