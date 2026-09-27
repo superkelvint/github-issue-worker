@@ -40,6 +40,9 @@ jobs:
       - name: Verify single canonical skill tree
         run: python3 tools/check_skill_layout.py
 
+      - name: Test skill layout validator
+        run: python3 -m unittest discover -s tools -p "test_*.py" -v
+
       - name: Check skill source diagnostic
         run: python3 -m py_compile tools/diagnose_skill_sources.py
 
