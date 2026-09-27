@@ -3,18 +3,40 @@ name: Skill policy tests
 on:
   pull_request:
     paths:
+      - "issue/**"
+      - "issue-fixer/**"
+      - "verify/**"
+      - "issue-followup/**"
+      - "ci-fixer/**"
+      - "pr-auto/**"
+      - "pr-reconciliation/**"
+      - "test-gut-check/**"
+      - "test-gut-check-batch/**"
+      - "coverage-risk/**"
+      - "cto-reflection/**"
       - "plugins/github-coding-agent-skills/**"
       - ".agents/plugins/marketplace.json"
-      - "tools/*.py"
+      - "tools/sync_marketplace_plugin.py"
       - ".github/workflows/pr-auto-policy.yml"
       - "README.md"
   push:
     branches:
       - main
     paths:
+      - "issue/**"
+      - "issue-fixer/**"
+      - "verify/**"
+      - "issue-followup/**"
+      - "ci-fixer/**"
+      - "pr-auto/**"
+      - "pr-reconciliation/**"
+      - "test-gut-check/**"
+      - "test-gut-check-batch/**"
+      - "coverage-risk/**"
+      - "cto-reflection/**"
       - "plugins/github-coding-agent-skills/**"
       - ".agents/plugins/marketplace.json"
-      - "tools/*.py"
+      - "tools/sync_marketplace_plugin.py"
       - ".github/workflows/pr-auto-policy.yml"
       - "README.md"
   workflow_dispatch:
@@ -37,11 +59,8 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Verify canonical marketplace and plugin layout
-        run: python3 tools/check_skill_layout.py
-
-      - name: Test skill layout validator
-        run: python3 -m unittest discover -s tools -p "test_*.py" -v
+      - name: Verify ChatGPT marketplace mirror
+        run: python3 tools/sync_marketplace_plugin.py --check
 
       - name: Check skill source diagnostic
         run: python3 -m py_compile tools/diagnose_skill_sources.py
@@ -50,9 +69,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          skill_root="plugins/github-coding-agent-skills/skills"
           for dir in issue verify issue-followup ci-fixer pr-auto test-gut-check test-gut-check-batch coverage-risk cto-reflection; do
             echo "==> $dir"
-            python3 -m unittest discover -s "$skill_root/$dir/scripts" -p "test_*.py" -v
+            python3 -m unittest discover -s "$dir/scripts" -p "test_*.py" -v
           done
-          bash "$skill_root/pr-reconciliation/scripts/test-reconcile-open-prs.sh"
+          bash pr-reconciliation/scripts/test-reconcile-open-prs.sh
