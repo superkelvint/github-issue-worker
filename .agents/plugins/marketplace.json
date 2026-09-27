@@ -8,7 +8,7 @@
       "name": "github-coding-agent-skills",
       "source": {
         "source": "local",
-        "path": "./plugins/github-coding-agent-skills"
+        "path": "./"
       },
       "policy": {
         "installation": "AVAILABLE",
