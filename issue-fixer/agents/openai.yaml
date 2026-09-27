@@ -1,0 +1,3 @@
+interface:
+  display_name: "Issue Fixer"
+  short_description: "Drive a named GitHub issue through fix, audit, merge, and closure"

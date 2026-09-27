@@ -1,0 +1,3 @@
+interface:
+  display_name: "Draft PR Verifier"
+  short_description: "Verify draft PRs, repair failures, and mark passing PRs ready"
