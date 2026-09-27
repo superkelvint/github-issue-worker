@@ -21,6 +21,8 @@ EXPECTED_NAMES = {
     "verify",
 }
 NAME_RE = re.compile(r"^name:\s*([^\s#]+)\s*$")
+YAML_KEY_RE = re.compile(r"^(\s*)([A-Za-z_][A-Za-z0-9_-]*):(?:\s*(.*?))?\s*$")
+REQUIRED_INTERFACE_FIELDS = ("display_name", "short_description")
 
 
 def skill_name(path: Path) -> str | None:
@@ -34,6 +36,57 @@ def skill_name(path: Path) -> str | None:
         if match:
             return match.group(1)
     return None
+
+
+def _yaml_scalar(value: str | None) -> str:
+    if value is None:
+        return ""
+    value = value.strip()
+    if " #" in value:
+        value = value.split(" #", 1)[0].rstrip()
+    if len(value) >= 2 and value[0] == value[-1] and value[0] in {'"', "'"}:
+        value = value[1:-1]
+    return value.strip()
+
+
+def validate_agent_metadata(path: Path) -> list[str]:
+    rel = path.as_posix()
+    if not path.is_file():
+        return [f"missing required agent metadata: {rel}"]
+
+    fields: dict[str, str] = {}
+    interface_indent: int | None = None
+
+    for raw_line in path.read_text(encoding="utf-8").splitlines():
+        if not raw_line.strip() or raw_line.lstrip().startswith("#"):
+            continue
+        match = YAML_KEY_RE.match(raw_line)
+        if not match:
+            continue
+
+        indent_text, key, value = match.groups()
+        indent = len(indent_text.replace("\t", "    "))
+
+        if interface_indent is None:
+            if key == "interface" and not _yaml_scalar(value):
+                interface_indent = indent
+            continue
+
+        if indent <= interface_indent:
+            break
+
+        if key in REQUIRED_INTERFACE_FIELDS:
+            fields[key] = _yaml_scalar(value)
+
+    errors = []
+    if interface_indent is None:
+        errors.append(f"missing interface mapping: {rel}")
+        return errors
+
+    for field in REQUIRED_INTERFACE_FIELDS:
+        if not fields.get(field):
+            errors.append(f"missing interface.{field}: {rel}")
+    return errors
 
 
 def main() -> int:
@@ -93,12 +146,22 @@ def main() -> int:
         else:
             declared[name] = path
 
+        metadata = path.parent / "agents" / "openai.yaml"
+        for error in validate_agent_metadata(metadata):
+            ok = False
+            try:
+                shown = metadata.relative_to(ROOT)
+                error = error.replace(metadata.as_posix(), shown.as_posix())
+            except ValueError:
+                pass
+            print(error, file=sys.stderr)
+
     if not ok:
         return 1
 
     print(
-        f"skill layout PASS: {len(canonical)} canonical skills "
-        "and no duplicate entrypoints"
+        f"skill layout PASS: {len(canonical)} canonical skills, "
+        "required agent metadata present, and no duplicate entrypoints"
     )
     return 0
 

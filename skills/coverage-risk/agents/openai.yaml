@@ -1,2 +1,3 @@
 interface:
   display_name: "Coverage Risk Reducer"
+  short_description: "Find and reduce the highest-risk gaps in repository test coverage"

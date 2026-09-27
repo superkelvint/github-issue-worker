@@ -39,7 +39,7 @@ exit 99
 GH
 chmod +x "$tmp/bin/gh"
 
-output="$(PATH="$tmp/bin:$PATH" "$subject" 2>&1)"
+output="$(PATH="$tmp/bin:$PATH" bash "$subject" 2>&1)"
 
 grep -Fq 'PR reconciliation: repo=acme/widgets base=main open=3' <<< "$output"
 grep -Fq 'OK   #11' <<< "$output"
@@ -47,7 +47,7 @@ grep -Fq 'SKIP #12: merge conflict' <<< "$output"
 grep -Fq 'OK   #13' <<< "$output"
 grep -Fq 'Summary: discovered=3 reconciled=2 skipped=1' <<< "$output"
 
-output="$(PATH="$tmp/bin:$PATH" "$subject" --repo acme/widgets --base develop --dry-run 2>&1)"
+output="$(PATH="$tmp/bin:$PATH" bash "$subject" --repo acme/widgets --base develop --dry-run 2>&1)"
 grep -Fq 'base=develop open=3' <<< "$output"
 grep -Fq 'DRY-RUN #11: would request branch update from develop' <<< "$output"
 grep -Fq 'Summary: discovered=3 dry_run=3' <<< "$output"
